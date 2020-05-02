@@ -2,15 +2,15 @@
 Simple pseudo-3d engine implementation. This library allows you to make two dimensional map and draw pseudo 3D image using Ray-Cast.
 
 This was done just for fun and probably will not be updated. But there are a bunch of fixes and improvements, such as:
-The network system is replaced by another, WORKING system
-Fisheye correction
-Realistic wall height (seriously, the zero-height wall was like half a player)
-Realistic circle collision (not just 10 walls)
-Menu fix (buttons now detect only mouse clicks, not holding)
-The application stops reading input and moving the cursor while you are switched to another window
-FPS limit (no more 600 fps in menu)
-Missing resources fix
-Small optimizations
+- The network system is replaced by another, WORKING system
+- Fisheye correction
+- Realistic wall height (seriously, the zero-height wall was like half a player)
+- Realistic circle collision (not just 10 walls)
+- Menu fix (buttons now detect only mouse clicks, not holding)
+- The application stops reading input and moving the cursor while you are switched to another window
+- FPS limit (no more 600 fps in menu)
+- Missing resources fix
+- Small optimizations
 
 Demonstration of how does this engine work:
 ![Project demonstration](demo/demo_engine.jpg)
@@ -28,8 +28,7 @@ This engine can perfom some mirrors. As you can see, we get correct reflection i
 ![Project demonstration](demo/demo_mirror.png)
 
 Reflection loop included:
-![Project demonstration](demo_mirror_loop.png)
+![Project demonstration](demo/demo_mirror_loop.png)
 
 Online test:
-![Project demonstration](demo_online.png)
-
+![Project demonstration](demo/demo_online.png)
