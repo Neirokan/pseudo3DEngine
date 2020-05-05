@@ -48,6 +48,7 @@ private:
 
     double d_direction;
     double d_fieldOfView;
+    double d_eyesHeight;
     double d_depth;
 
     double d_walkSpeed;
@@ -68,18 +69,16 @@ private:
     std::vector<Weapon> v_weapons;
     int i_selectedWeapon = 0;
 
-    sf::Int16 i_floorSegmentsSize;
-
-    static sf::SoundBuffer walkSoundBuffer;
     sf::Sound walkSound;
 
     std::string s_lastKill;
 
     void objectsRayCrossed(const std::pair<Point2D, Point2D>& ray, std::vector<RayCastStructure>& v_rayCastStruct, const std::string& name, int reflections = 0);
     void hiddenObjectsRayCrossed(const std::pair<Point2D, Point2D>& ray, const std::string& name);
-    void drawVerticalStrip(sf::RenderWindow& window, const RayCastStructure& obj, int shift, int f);
-    void recursiveDrawing(sf::RenderWindow& window, const std::vector<RayCastStructure>& v_RayCastStructure, int shift, int rec = 1);
+    void drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure& obj, int shift, int f);
+    void recursiveDrawing(sf::RenderTarget& window, const std::vector<RayCastStructure>& v_RayCastStructure, int shift, int rec = 1);
     static void recursiveIncreaseDistance(std::vector<RayCastStructure>& v_RayCastStructure, double distance);
+    std::pair<double, double> heightInPixels(double distance, double height);
 
     static double scalarWithNormal(Point2D edge, Point2D vector);
 
@@ -87,22 +86,23 @@ private:
     std::pair<std::string, double> cameraRayCheck(RayCastStructure& structure);
 
     std::map<std::string, Camera&> m_playersOnTheScreen;
-    static double horizontalAngles[DISTANCES_SEGMENTS];
-    static double verticalMod[SCREEN_HEIGHT];
+    static double directionSin;
+    static double directionCos;
+    static double horizontalCos[DISTANCES_SEGMENTS];
+    static double horizontalSin[DISTANCES_SEGMENTS];
+    static double verticalTan[SCREEN_HEIGHT];
     static double angleInited;
 
-    static void drawHealth(sf::RenderWindow& window, int x, int y, int width, int health);
+    static void drawHealth(sf::RenderTarget& window, int x, int y, int width, int health);
 public:
-    explicit Camera(World& world, Point2D position, double direction = 0, std::string texture = SKIN, int health = 100, double fieldOfView = PI/2, double depth = 25, double walkSpeed = 1.7, double viewSpeed = .005)
-    : W_world(world), Circle2D(COLLISION_DISTANCE, position, 0.6, texture, 4), d_direction(direction), d_fieldOfView(fieldOfView), d_depth(depth), d_walkSpeed(walkSpeed), d_viewSpeed(viewSpeed), i_health(health), i_floorSegmentsSize(FLOOR_SEGMENT_SIZE)
+    explicit Camera(World& world, Point2D position, double direction = 0, std::string texture = SKIN, int health = 100, double fieldOfView = PI/2, double height = 0.6, double eyesHeight = 0.5, double depth = 25, double walkSpeed = 1.7, double viewSpeed = .005)
+    : W_world(world), Circle2D(COLLISION_DISTANCE, position, height, texture, 4), d_direction(direction), d_fieldOfView(fieldOfView), d_eyesHeight(eyesHeight), d_depth(depth), d_walkSpeed(walkSpeed), d_viewSpeed(viewSpeed), i_health(health)
     {
         Weapon weapon1(100000);
         weapon1.choiceWeapon("shotgun");
         v_weapons.push_back(weapon1);
 
-        if (walkSoundBuffer.getSamples() == 0)
-            walkSoundBuffer.loadFromFile(WALK_SOUND);
-        walkSound.setBuffer(walkSoundBuffer);
+        walkSound.setBuffer(W_world.walkSoundBuffer());
         walkSound.setLoop(true);
         walkSound.setVolume(50.f);
     }
@@ -119,6 +119,7 @@ public:
         d_direction = camera.d_direction;
         d_depth = camera.d_depth;
         d_fieldOfView = camera.d_fieldOfView;
+        d_eyesHeight = camera.d_eyesHeight;
         d_walkSpeed = camera.d_walkSpeed;
         d_viewSpeed = camera.d_viewSpeed;
         i_health = camera.i_health;
@@ -128,11 +129,8 @@ public:
         localMousePosition = camera.localMousePosition;
         v_weapons = camera.v_weapons;
         i_selectedWeapon = camera.i_selectedWeapon;
-        i_floorSegmentsSize = camera.i_floorSegmentsSize;
         walkSound = camera.walkSound;
         setName(camera.getName());
-        memcpy(horizontalAngles, camera.horizontalAngles, sizeof(horizontalAngles));
-        memcpy(verticalMod, camera.verticalMod, sizeof(verticalMod));
     }
 
     bool cross(const std::pair<Point2D, Point2D>& ray, std::pair<Point2D, Point2D>& wall, Point2D& point, double& uv) override
@@ -143,16 +141,16 @@ public:
     ClientUDP* client = nullptr;
 
     void updateDistances(const World& world);
-    void drawCameraView(sf::RenderWindow& window);
+    void drawCameraView(sf::RenderTarget& window);
 
-    void draw(sf::RenderWindow& window) override;
+    void draw(sf::RenderTarget& window) override;
 
     bool keyboardControl(double elapsedTime, sf::RenderWindow& window);
 
     void shiftPrecise(Point2D vector);
 
     bool isSmooth() { return b_smooth; }
-    void switchSmooth() { b_smooth = !b_smooth; i_floorSegmentsSize = b_smooth ? 1 : FLOOR_SEGMENT_SIZE; }
+    void switchSmooth() { b_smooth = !b_smooth; }
     bool isCollision() { return b_collision; }
     void switchCollision() { b_collision = !b_collision; }
     bool isTextures() { return b_textures; }

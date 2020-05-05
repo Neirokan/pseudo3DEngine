@@ -82,9 +82,9 @@ public:
 
     void drawMenu(sf::RenderWindow& window, double elapsedTime);
 
-    void settings(sf::RenderWindow& window);
+    void settings(sf::RenderTarget& window);
 
-    void about(sf::RenderWindow& window);
+    void about(sf::RenderTarget& window);
 
     bool isPaused() { return b_pause; }
     void setPause() { b_pause = true; }

@@ -26,24 +26,32 @@ int main()
     sf::Uint16 clientPort;
     sf::Uint16 serverPort;
     std::ifstream connectfile("connect.txt", std::ifstream::in);
+
+    // If failed to read client settings
     if (!connectfile.is_open() || !(connectfile >> clientIp >> clientPort) || sf::IpAddress(clientIp) == sf::IpAddress::None)
     {
         connectfile.close();
+        // Create file and write default settings
         clientIp = "127.0.0.1";
         clientPort = 54000;
         std::ofstream temp("connect.txt", std::ofstream::out);
         temp << clientIp << std::endl << clientPort;
         temp.close();
     }
+    connectfile.close();
+
+    // If failed to read server settings
     connectfile.open("server.txt", std::ifstream::in);
     if (!connectfile.is_open() || !(connectfile >> serverPort))
     {
         connectfile.close();
+        // Create file and write default settings
         serverPort = 54000;
         std::ofstream temp("server.txt", std::ofstream::out);
         temp << serverPort;
         temp.close();
     }
+    connectfile.close();
 
     // Sounds
 
@@ -56,6 +64,7 @@ int main()
     sf::Music backSounds;
     backSounds.openFromFile("sounds/backSounds.ogg");
     backSounds.setVolume(20);
+    backSounds.setLoop(true);
     backSounds.pause();
 
     // World Init
@@ -206,6 +215,7 @@ int main()
             }
         }
         window.display();
+        // Sleep if there are more than 60 fps
         std::chrono::duration<double> t = std::chrono::system_clock::now().time_since_epoch();
         d_elapsedTime = t.count() - Time::time();
         if (d_elapsedTime < 1 / 60.0)

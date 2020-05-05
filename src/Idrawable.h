@@ -10,7 +10,7 @@
 class Idrawable
 {
 public:
-    virtual void draw(sf::RenderWindow& window) = 0;
+    virtual void draw(sf::RenderTarget& window) = 0;
 };
 
 

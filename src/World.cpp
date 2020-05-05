@@ -5,7 +5,7 @@
 #include "World.h"
 #include "settings.h"
 
-void World::draw(sf::RenderWindow& window)
+void World::draw(sf::RenderTarget& window)
 {
     sf::ConvexShape background;
     background.setPointCount(4);

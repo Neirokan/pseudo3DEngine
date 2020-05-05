@@ -6,6 +6,7 @@
 #define PSEUDO3DENGINE_WORLD_H
 
 #include "Object2D.h"
+#include <SFML/Audio.hpp>
 #include <string>
 #include <map>
 
@@ -19,8 +20,10 @@ private:
 
     sf::Texture T_sky_texture;
     sf::Texture T_floor_texture;
+    sf::SoundBuffer SB_walk_sound;
     mutable bool sky_texture_loaded = false;
     mutable bool floor_texture_loaded = false;
+    mutable bool walk_sound_loaded = false;
     mutable std::string s_sky_texture;
     mutable std::string s_floor_texture;
     sf::Sprite S_floor;
@@ -54,7 +57,7 @@ public:
     double width() const { return d_width; }
     double length() const { return d_length; }
 
-    void draw(sf::RenderWindow& window) override;
+    void draw(sf::RenderTarget& window) override;
 
     const std::map<std::string, Object2D&>& objects() const { return map_objects; }
 
@@ -62,9 +65,7 @@ public:
     {
         if (sky_texture_loaded)
             return T_sky_texture;
-        sky_texture_loaded = true;
-        if (!T_sky_texture.loadFromFile(s_sky_texture))
-            sky_texture_loaded = false;
+        sky_texture_loaded = T_sky_texture.loadFromFile(s_sky_texture);
         T_sky_texture.setRepeated(true);
         return T_sky_texture;
     }
@@ -73,11 +74,17 @@ public:
     {
         if (floor_texture_loaded)
             return T_floor_texture;
-        floor_texture_loaded = true;
-        if (!T_floor_texture.loadFromFile(s_floor_texture))
-            floor_texture_loaded = false;
+        floor_texture_loaded = T_floor_texture.loadFromFile(s_floor_texture);
         T_floor_texture.setRepeated(true);
         return T_floor_texture;
+    }
+
+    const sf::SoundBuffer& walkSoundBuffer()
+    {
+        if (walk_sound_loaded)
+            return SB_walk_sound;
+        walk_sound_loaded = SB_walk_sound.loadFromFile(WALK_SOUND);
+        return SB_walk_sound;
     }
 };
 

@@ -66,7 +66,7 @@ bool Weapon::fire()
     return false;
 }
 
-void Weapon::draw(sf::RenderWindow& window)
+void Weapon::draw(sf::RenderTarget& window)
 {
     auto tp = std::chrono::system_clock::now();
     std::chrono::duration <double> elapsedTime = tp.time_since_epoch();

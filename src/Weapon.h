@@ -49,7 +49,7 @@ public:
 
     double speed() const { return d_speed; }
 
-    void draw(sf::RenderWindow& window) override;
+    void draw(sf::RenderTarget& window) override;
 
     int damage() const { return i_damage; }
 };

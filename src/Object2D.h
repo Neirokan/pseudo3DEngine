@@ -80,7 +80,7 @@ public:
     void makeMirror() { b_isMirror = true; }
     void makeItNotMirror() {b_isMirror = false; }
 
-    void draw(sf::RenderWindow& window) override;
+    void draw(sf::RenderTarget& window) override;
 
     double height() const { return d_height; }
 

@@ -66,7 +66,7 @@ bool Object2D::cross(const std::pair<Point2D, Point2D>& ray, std::pair<Point2D, 
     return success;
 }
 
-void Object2D::draw(sf::RenderWindow& window) {
+void Object2D::draw(sf::RenderTarget& window) {
     sf::ConvexShape polygon;
     polygon.setPointCount(nodes().size());
     int i = 0;

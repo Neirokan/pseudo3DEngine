@@ -133,7 +133,7 @@ void Menu::drawMenu(sf::RenderWindow& window, double elapsedTime)
     about(window);
 }
 
-void Menu::about(sf::RenderWindow& window)
+void Menu::about(sf::RenderTarget& window)
 {
     if (!b_about)
         return;
@@ -150,7 +150,7 @@ void Menu::about(sf::RenderWindow& window)
         b_about = false;
 }
 
-void Menu::settings(sf::RenderWindow& window)
+void Menu::settings(sf::RenderTarget& window)
 {
     if (!b_settings)
         return;
