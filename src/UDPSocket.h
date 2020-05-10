@@ -15,38 +15,38 @@
 class UDPSocket
 {
 private:
-	sf::UdpSocket _socket;
-	sf::Uint16 _nextRelyMsgId;
-	sf::Uint16 _ownId;
-	const sf::Uint16 _serverId = 0;
+    sf::UdpSocket _socket;
+    sf::Uint16 _nextRelyMsgId;
+    sf::Uint16 _ownId;
+    const sf::Uint16 _serverId = 0;
 
-	std::map<sf::Uint16, UDPConnection> _connections;
-	std::map<sf::Uint16, ReliableMsg> _relyPackets;
-	std::map<sf::Uint32, double> _confirmTimes;
-	std::function<bool(sf::Uint16)> _timeoutCallback;
+    std::map<sf::Uint16, UDPConnection> _connections;
+    std::map<sf::Uint16, ReliableMsg> _relyPackets;
+    std::map<sf::Uint32, double> _confirmTimes;
+    std::function<bool(sf::Uint16)> _timeoutCallback;
 
+    bool confirmed(sf::Uint16 msgId, sf::Uint16 senderId);
 
 public:
-	explicit UDPSocket();
-	bool bind(sf::Uint16 port);
-	void unbind();
-	void setTimeoutCallback(std::function<bool(sf::Uint16)> callback);
-	void clearTimeoutCallback(std::function<bool(sf::Uint16)> callback);
-	void addConnection(sf::Uint16 id, sf::IpAddress ip, sf::Uint16 port);
-	void removeConnection(sf::Uint16 id);
+    explicit UDPSocket();
+    bool bind(sf::Uint16 port);
+    void unbind();
+    void setTimeoutCallback(std::function<bool(sf::Uint16)> callback);
+    void clearTimeoutCallback();
+    void addConnection(sf::Uint16 id, sf::IpAddress ip, sf::Uint16 port);
+    void removeConnection(sf::Uint16 id);
 
-	void setId(sf::Uint16 id);
-	sf::Uint16 ownId() const;
-	sf::Uint16 serverId() const;
+    void setId(sf::Uint16 id);
+    sf::Uint16 ownId() const;
+    sf::Uint16 serverId() const;
 
-	void send(sf::Packet& packet, sf::IpAddress& ip, sf::Uint16 port);
-	void send(sf::Packet& packet, sf::Uint16 id);
-	void sendRely(sf::Packet& packet, sf::IpAddress& ip, sf::Uint16 port);
-	void sendRely(sf::Packet& packet, sf::Uint16 id);
+    void send(sf::Packet& packet, sf::IpAddress& ip, sf::Uint16 port);
+    void send(sf::Packet& packet, sf::Uint16 id);
+    void sendRely(sf::Packet& packet, sf::IpAddress& ip, sf::Uint16 port);
+    void sendRely(sf::Packet& packet, sf::Uint16 id);
 
-	void update();
-	MsgType receive(sf::Packet& packet, sf::Uint16& senderId);
-	bool confirmed(sf::Uint16 msgId, sf::Uint16 senderId);
+    void update();
+    MsgType receive(sf::Packet& packet, sf::Uint16& senderId);
 };
 
 

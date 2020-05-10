@@ -21,6 +21,9 @@ private:
     std::map<sf::Uint16, Camera> players;
     std::vector<Point2D> spawns = { {1.5, 1.5}, {1.5, 9} };
 
+    bool process();
+    bool timeout(sf::Uint16 id);
+
 public:
     ClientUDP(World& world);
     bool isWorking() const;
@@ -29,9 +32,7 @@ public:
     void connect(sf::IpAddress ip, sf::Uint16 port);
     void disconnect();
     void update();
-    bool process();
-    bool timeout(sf::Uint16 id);
-    void shoot(std::string& name, double damage, double distance);
+    void shoot(const std::string& name, double damage, double distance);
 };
 
 

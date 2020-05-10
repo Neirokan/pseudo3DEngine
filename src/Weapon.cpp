@@ -4,22 +4,21 @@
 
 #include "Weapon.h"
 
+Weapon::Weapon(int amount) : i_amount(amount)
+{
+}
+
 Weapon::Weapon(const Weapon& weapon)
 {
     this->i_amount = weapon.i_amount;
     this->d_speed = weapon.d_speed;
 
     this->S_weapon_arm = weapon.S_weapon_arm;
-    this->T_weapon_arm = weapon.T_weapon_arm;
     this->S_weapon_handle = weapon.S_weapon_handle;
-    this->T_weapon_handle = weapon.T_weapon_handle;
     this->S_weapon_trunk = weapon.S_weapon_trunk;
-    this->T_weapon_trunk = weapon.T_weapon_trunk;
 
     this->S_aim = weapon.S_aim;
-    this->T_aim = weapon.T_aim;
     this->S_fire = weapon.S_fire;
-    this->T_fire = weapon.T_fire;
 
     this->fireSoundBuffer = weapon.fireSoundBuffer;
     this->fireSound = weapon.fireSound;
@@ -28,20 +27,17 @@ Weapon::Weapon(const Weapon& weapon)
     this->d_amplitude = weapon.d_amplitude;
 
     this->i_damage = weapon.i_damage;
-
-    S_weapon_handle.setTexture(T_weapon_handle);
 }
 
 void Weapon::choiceWeapon(std::string name)
 {
     if (name == "shotgun")
     {
-        T_weapon_arm.loadFromFile(SHOTGUN_ARM_TEXTURE);
-        T_weapon_handle.loadFromFile(SHOTGUN_HANDLE_TEXTURE);
-        T_weapon_trunk.loadFromFile(SHOTGUN_TRUNK_TEXTURE);
-
-        T_aim.loadFromFile(AIM_TEXTURE);
-        T_fire.loadFromFile(FIRE_SHOTGUN_TEXTURE);
+        S_weapon_arm.setTexture(*ResourceManager::loadTexture(SHOTGUN_ARM_TEXTURE));
+        S_weapon_handle.setTexture(*ResourceManager::loadTexture(SHOTGUN_HANDLE_TEXTURE));
+        S_weapon_trunk.setTexture(*ResourceManager::loadTexture(SHOTGUN_TRUNK_TEXTURE));
+        S_aim.setTexture(*ResourceManager::loadTexture(AIM_TEXTURE));
+        S_fire.setTexture(*ResourceManager::loadTexture(FIRE_SHOTGUN_TEXTURE));
         d_speed = 0.4;
         S_aim.scale(.05f, .05f);
 
@@ -90,7 +86,6 @@ void Weapon::draw(sf::RenderTarget& window)
     d_fireAnimTime -= diff;
     if (d_fireAnimTime > 0)
     {
-        S_fire.setTexture(T_fire);
         S_fire.setPosition(sf::Vector2f((float)(weaponPosition.x - 490), (float)(weaponPosition.y - 792))); // абсолютная позиция
         window.draw(S_fire);
     }
@@ -101,9 +96,6 @@ void Weapon::draw(sf::RenderTarget& window)
     if (d_lastFireTime <= 0 || d_lastFireTime > d_speed / 2)
         d_armShift = 0;
 
-    S_weapon_arm.setTexture(T_weapon_arm);
-    S_weapon_handle.setTexture(T_weapon_handle);
-    S_weapon_trunk.setTexture(T_weapon_trunk);
     S_weapon_arm.setPosition(sf::Vector2f((float)(weaponPosition.x + d_armShift), (float)(weaponPosition.y + d_armShift))); // Shift arm when we shoot
     S_weapon_handle.setPosition(sf::Vector2f((float)weaponPosition.x, (float)weaponPosition.y));
     S_weapon_trunk.setPosition(sf::Vector2f((float)weaponPosition.x, (float)weaponPosition.y));
@@ -112,9 +104,6 @@ void Weapon::draw(sf::RenderTarget& window)
     window.draw(S_weapon_arm);
     window.draw(S_weapon_handle);
 
-    //
-
-    S_aim.setTexture(T_aim);
     S_aim.setPosition(sf::Vector2f((float)(SCREEN_WIDTH / 2 - S_aim.getTextureRect().width / 50), (float)(SCREEN_HEIGHT / 2 - S_aim.getTextureRect().height / 50))); // абсолютная позиция
     window.draw(S_aim);
 }

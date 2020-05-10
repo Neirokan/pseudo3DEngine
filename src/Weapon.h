@@ -14,17 +14,12 @@ class Weapon : virtual public Idrawable
 private:
     double d_elapsedTime = 0;
 
-    sf::Texture T_weapon_arm;
     sf::Sprite S_weapon_arm;
-    sf::Texture T_weapon_handle;
     sf::Sprite S_weapon_handle;
-    sf::Texture T_weapon_trunk;
     sf::Sprite S_weapon_trunk;
 
     sf::Sprite S_aim;
-    sf::Texture T_aim;
     sf::Sprite S_fire;
-    sf::Texture T_fire;
 
     sf::SoundBuffer fireSoundBuffer;
     sf::Sound fireSound;
@@ -39,7 +34,7 @@ private:
 
     double d_lastFireTime = 0;
 public:
-    Weapon(int amount) : i_amount(amount) { };
+    Weapon(int amount);
 
     Weapon(const Weapon& weapon);
 

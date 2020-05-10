@@ -7,9 +7,9 @@
 
 namespace Time
 {
-	double time();
-	double deltaTime();
-	void update();
+    double time();
+    double deltaTime();
+    void update();
 }
 
 

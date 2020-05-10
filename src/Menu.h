@@ -18,8 +18,8 @@
 
 struct Button
 {
-    sf::Texture T_Texture;
-    sf::Texture T_PressedTexture;
+    sf::Texture* T_Texture;
+    sf::Texture* T_PressedTexture;
     sf::Sprite button;
     std::string name;
 
@@ -30,7 +30,7 @@ struct Button
     {
         if (!selected && !pressed)
         {
-            button.setTexture(T_PressedTexture);
+            button.setTexture(*T_PressedTexture);
             selected = true;
             button.scale({ 1.01f, 1.01f });
         }
@@ -40,7 +40,7 @@ struct Button
     {
         if (selected && !pressed)
         {
-            button.setTexture(T_Texture);
+            button.setTexture(*T_Texture);
             selected = false;
             button.scale({ 1 / 1.01f, 1 / 1.01f });
         }
@@ -50,12 +50,12 @@ struct Button
     {
         if (!pressed)
         {
-            button.setTexture(T_PressedTexture);
+            button.setTexture(*T_PressedTexture);
             pressed = true;
         }
         else
         {
-            button.setTexture(T_Texture);
+            button.setTexture(*T_Texture);
             pressed = false;
         }
     }

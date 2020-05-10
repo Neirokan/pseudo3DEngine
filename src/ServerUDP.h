@@ -19,7 +19,10 @@ private:
     bool working;
 
     std::map<sf::Uint16, Camera> players;
-    std::vector<Point2D> spawns = { {1.5, 1.5}, {1.5, 9} };
+    std::vector<Point2D> spawns;
+
+    bool process();
+    bool timeout(sf::Uint16 id);
 
 public:
     ServerUDP(World& world);
@@ -27,8 +30,8 @@ public:
     bool start(sf::Uint16 port);
     void stop();
     void update();
-    bool process();
-    bool timeout(sf::Uint16 id);
+    void addSpawn(Point2D point);
+    void clearSpawns();
 };
 
 

@@ -6,37 +6,36 @@
 
 Menu::Menu()
 {
-
     buttons.assign(7, {});
 
     buttons[0].name = "PLAYGAME";
     buttons[1].name = "SETTINGS";
     buttons[2].name = "ABOUT";
     buttons[3].name = "QUIT";
-    buttons[0].T_Texture.loadFromFile(PLAYGAME_TEXTURE);
-    buttons[1].T_Texture.loadFromFile(SETTINGS_TEXTURE);
-    buttons[2].T_Texture.loadFromFile(ABOUT_TEXTURE);
-    buttons[3].T_Texture.loadFromFile(QUIT_TEXTURE);
+    buttons[0].T_Texture = ResourceManager::loadTexture(PLAYGAME_TEXTURE);
+    buttons[1].T_Texture = ResourceManager::loadTexture(SETTINGS_TEXTURE);
+    buttons[2].T_Texture = ResourceManager::loadTexture(ABOUT_TEXTURE);
+    buttons[3].T_Texture = ResourceManager::loadTexture(QUIT_TEXTURE);
 
-    buttons[0].T_PressedTexture.loadFromFile(PLAYGAME_PRESSED_TEXTURE);
-    buttons[1].T_PressedTexture.loadFromFile(SETTINGS_PRESSED_TEXTURE);
-    buttons[2].T_PressedTexture.loadFromFile(ABOUT_PRESSED_TEXTURE);
-    buttons[3].T_PressedTexture.loadFromFile(QUIT_PRESSED_TEXTURE);
+    buttons[0].T_PressedTexture = ResourceManager::loadTexture(PLAYGAME_PRESSED_TEXTURE);
+    buttons[1].T_PressedTexture = ResourceManager::loadTexture(SETTINGS_PRESSED_TEXTURE);
+    buttons[2].T_PressedTexture = ResourceManager::loadTexture(ABOUT_PRESSED_TEXTURE);
+    buttons[3].T_PressedTexture = ResourceManager::loadTexture(QUIT_PRESSED_TEXTURE);
 
     buttons[4].name = "TEXTURING";
     buttons[5].name = "SMOOTHING";
     buttons[6].name = "COLLISION";
-    buttons[4].T_Texture.loadFromFile(TEXTURING_SELECT);
-    buttons[5].T_Texture.loadFromFile(SMOOTHING_SELECT);
-    buttons[6].T_Texture.loadFromFile(COLLISION_SELECT);
+    buttons[4].T_Texture = ResourceManager::loadTexture(TEXTURING_SELECT);
+    buttons[5].T_Texture = ResourceManager::loadTexture(SMOOTHING_SELECT);
+    buttons[6].T_Texture = ResourceManager::loadTexture(COLLISION_SELECT);
 
-    buttons[4].T_PressedTexture.loadFromFile(TEXTURING_SELECT_S);
-    buttons[5].T_PressedTexture.loadFromFile(SMOOTHING_SELECT_S);
-    buttons[6].T_PressedTexture.loadFromFile(COLLISION_SELECT_S);
+    buttons[4].T_PressedTexture = ResourceManager::loadTexture(TEXTURING_SELECT_S);
+    buttons[5].T_PressedTexture = ResourceManager::loadTexture(SMOOTHING_SELECT_S);
+    buttons[6].T_PressedTexture = ResourceManager::loadTexture(COLLISION_SELECT_S);
 
     for (size_t i = 0; i < buttons.size(); i++)
     {
-        buttons[i].button.setTexture(buttons[i].T_Texture);
+        buttons[i].button.setTexture(*buttons[i].T_Texture);
         if (i < 4)
             buttons[i].button.setPosition((float)SCREEN_WIDTH / 2 - 170, (float)50 + 150 * i);
         else
@@ -138,10 +137,8 @@ void Menu::about(sf::RenderTarget& window)
     if (!b_about)
         return;
 
-    sf::Texture T_Texture;
-    T_Texture.loadFromFile(ABOUT_INFO);
     sf::Sprite button;
-    button.setTexture(T_Texture);
+    button.setTexture(*ResourceManager::loadTexture(ABOUT_INFO));
 
     button.scale((float)SCREEN_WIDTH / 1920, (float)SCREEN_WIDTH / 1920);
 

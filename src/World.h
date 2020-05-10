@@ -18,18 +18,12 @@ private:
     double d_length = 0;
     double d_width = 0;
 
-    sf::Texture T_sky_texture;
-    sf::Texture T_floor_texture;
-    sf::SoundBuffer SB_walk_sound;
-    mutable bool sky_texture_loaded = false;
-    mutable bool floor_texture_loaded = false;
-    mutable bool walk_sound_loaded = false;
-    mutable std::string s_sky_texture;
-    mutable std::string s_floor_texture;
+    sf::Texture& T_sky_texture;
+    sf::Texture& T_floor_texture;
     sf::Sprite S_floor;
 
 public:
-    World(double length, double width, std::string sky_texture = SKY_TEXTURE, std::string floor_texture = FLOOR_TEXTURE) : d_length(length), d_width(width), s_sky_texture(sky_texture), s_floor_texture(floor_texture)
+    World(double length, double width, std::string sky_texture = SKY_TEXTURE, std::string floor_texture = FLOOR_TEXTURE) : d_length(length), d_width(width), T_floor_texture(*ResourceManager::loadTexture(floor_texture)), T_sky_texture(*ResourceManager::loadTexture(sky_texture))
     {
         S_floor.setTexture(floorTexture());
     }
@@ -63,28 +57,12 @@ public:
 
     const sf::Texture& skyTexture()
     {
-        if (sky_texture_loaded)
-            return T_sky_texture;
-        sky_texture_loaded = T_sky_texture.loadFromFile(s_sky_texture);
-        T_sky_texture.setRepeated(true);
         return T_sky_texture;
     }
 
     const sf::Texture& floorTexture()
     {
-        if (floor_texture_loaded)
-            return T_floor_texture;
-        floor_texture_loaded = T_floor_texture.loadFromFile(s_floor_texture);
-        T_floor_texture.setRepeated(true);
         return T_floor_texture;
-    }
-
-    const sf::SoundBuffer& walkSoundBuffer()
-    {
-        if (walk_sound_loaded)
-            return SB_walk_sound;
-        walk_sound_loaded = SB_walk_sound.loadFromFile(WALK_SOUND);
-        return SB_walk_sound;
     }
 };
 

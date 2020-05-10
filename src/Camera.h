@@ -14,18 +14,11 @@
 
 class ClientUDP;
 
-struct RGB
-{
-    int RED = 255;
-    int GREEN = 255;
-    int BLUE = 255;
-};
-
 struct RayCastStructure
 {
     double distance;    // How far is this texture
     double progress;    // progress defines the point of texture we should load
-    std::string object; // particular object. We need this to show particular texture.
+    Object2D* object;   // hitted object. We need this to get it's texture.
     double height;      // objects has different height
 
     std::vector<RayCastStructure> v_mirrorRayCast; // When we have mirror, we should know about all objects we can see
@@ -71,8 +64,6 @@ private:
 
     sf::Sound walkSound;
 
-    std::string s_lastKill;
-
     void objectsRayCrossed(const std::pair<Point2D, Point2D>& ray, std::vector<RayCastStructure>& v_rayCastStruct, const std::string& name, int reflections = 0);
     void hiddenObjectsRayCrossed(const std::pair<Point2D, Point2D>& ray, const std::string& name);
     void drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure& obj, int shift, int f);
@@ -83,7 +74,7 @@ private:
     static double scalarWithNormal(Point2D edge, Point2D vector);
 
     void fire();
-    std::pair<std::string, double> cameraRayCheck(RayCastStructure& structure);
+    std::pair<Object2D*, double> cameraRayCheck(RayCastStructure& structure);
 
     std::map<std::string, Camera&> m_playersOnTheScreen;
     static double directionSin;
@@ -102,17 +93,15 @@ public:
         weapon1.choiceWeapon("shotgun");
         v_weapons.push_back(weapon1);
 
-        walkSound.setBuffer(W_world.walkSoundBuffer());
+        walkSound.setBuffer(*ResourceManager::loadSoundBuffer(WALK_SOUND));
         walkSound.setLoop(true);
         walkSound.setVolume(50.f);
     }
 
-    Camera(const Camera& camera) : W_world(camera.W_world) // copy constructor
+    Camera(const Camera& camera) : Circle2D(camera), W_world(camera.W_world) // copy constructor
     {
         d_height = camera.d_height;
         v_points2D = camera.v_points2D;
-        T_texture = camera.T_texture;
-        s_texture = camera.s_texture;
         p_position = camera.p_position;
         v_distances = camera.v_distances;
         allCollisions = camera.allCollisions;
@@ -165,8 +154,6 @@ public:
     void setHealth(double h) {i_health = h; }
 
     int type() override { return 1; }
-    std::string lastKill() { return s_lastKill;}
-    void cleanLastKill(){s_lastKill = "";}
 
     void addCamera(std::string name, Camera& camera);
     void removeCamera(std::string name);

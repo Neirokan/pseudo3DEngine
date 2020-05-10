@@ -28,7 +28,7 @@ Camera& ClientUDP::camera()
     return players.at(socket.ownId());
 }
 
-void ClientUDP::shoot(std::string& name, double damage, double distance)
+void ClientUDP::shoot(const std::string& name, double damage, double distance)
 {
     sf::Packet packet;
     for (auto&& player : players)

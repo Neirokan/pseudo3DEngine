@@ -44,7 +44,6 @@ void Camera::objectsRayCrossed(const pair<Point2D, Point2D>& ray, std::vector<Ra
 {
     pair<Point2D, Point2D> edge;
     Point2D nearCross;
-    string obj;
     double len = 0;
     double closest = d_depth;
     for (auto object : W_world.objects())
@@ -55,7 +54,6 @@ void Camera::objectsRayCrossed(const pair<Point2D, Point2D>& ray, std::vector<Ra
         // Check crossing
 
         Point2D crossPoint = ray.second;
-        obj = "";
         std::vector<RayCastStructure> v_reflectedRayCastStructure;
 
         pair<Point2D, Point2D> wall;
@@ -74,7 +72,7 @@ void Camera::objectsRayCrossed(const pair<Point2D, Point2D>& ray, std::vector<Ra
                 objectsRayCrossed(newRay, v_reflectedRayCastStructure, object.first, reflections + 1);
                 recursiveIncreaseDistance(v_reflectedRayCastStructure, (ray.first - crossPoint).abs());
             }
-            v_rayCastStruct.push_back({ (ray.first - crossPoint).abs(), len, object.first, object.second.height(), v_reflectedRayCastStructure });
+            v_rayCastStruct.push_back({ (ray.first - crossPoint).abs(), len, &object.second, object.second.height(), v_reflectedRayCastStructure });
             // for collision
             double dist = (crossPoint - position()).abs();
             if (dist < closest)
@@ -102,7 +100,7 @@ void Camera::objectsRayCrossed(const pair<Point2D, Point2D>& ray, std::vector<Ra
 // Must be use only on invisible segments.
 void Camera::hiddenObjectsRayCrossed(const pair<Point2D, Point2D>& ray, const std::string& name)
 {
-    std::string obj = "";
+    Object2D* obj = nullptr;
     std::pair<Point2D, Point2D> edge;
     double len = 0;
     Point2D nearCross = ray.second;
@@ -120,12 +118,12 @@ void Camera::hiddenObjectsRayCrossed(const pair<Point2D, Point2D>& ray, const st
         if (object.second.cross(ray, wall, crossPoint, len) && (nearCross - ray.first).abs() > (crossPoint - ray.first).abs())
         {
             nearCross = std::move(crossPoint);
-            obj = object.first;
+            obj = &object.second;
             edge = std::move(wall);
         }
     }
     // If something was hitted close enough - write it
-    if (!obj.empty())
+    if (obj)
     {
         CollisionInformation newCollision;
         newCollision.distance = (nearCross - position()).abs();
@@ -163,7 +161,7 @@ void Camera::updateDistances(const World& world)
         if (!v_rayCastStructure.empty())
             v_distances.push_back(v_rayCastStructure);
         else
-            v_distances.push_back({ {d_depth, 0, "", 1} });
+            v_distances.push_back({ {d_depth, 0, nullptr, 1} });
     }
 
     // Invisible for player segments
@@ -215,10 +213,10 @@ void Camera::draw(sf::RenderTarget& window)
 }
 
 // Returns player if ray hits him
-std::pair<std::string, double> Camera::cameraRayCheck(RayCastStructure& structure) {
-    std::pair<std::string, double> result = { "", 1 };
+std::pair<Object2D*, double> Camera::cameraRayCheck(RayCastStructure& structure) {
+    std::pair<Object2D*, double> result = { nullptr, 1 };
     // If hit player
-    if (W_world[structure.object].type() == 1)
+    if (structure.object->type() == 1)
     {
         result.first = structure.object;
         result.second = structure.distance;
@@ -241,9 +239,9 @@ void Camera::fire()
     // if something hitted
     if (!v_rayCastStructure.empty())
     {
-        std::pair<std::string, double> hitted = cameraRayCheck(v_rayCastStructure[v_rayCastStructure.size() - 1]);
-        if (hitted.first != "")
-            client->shoot(hitted.first, v_weapons[i_selectedWeapon].damage(), hitted.second);
+        std::pair<Object2D*, double> hitted = cameraRayCheck(v_rayCastStructure[v_rayCastStructure.size() - 1]);
+        if (hitted.first)
+            client->shoot(hitted.first->getName(), v_weapons[i_selectedWeapon].damage(), hitted.second);
     }
 }
 
@@ -261,7 +259,8 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     // Exit to menu
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
     {
-        return (b_hadFocus = false);
+        b_hadFocus = false;
+        return false;
     }
 
     double dx = 0;
@@ -299,7 +298,7 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     }
     // Mouse movement
     if (sf::Mouse::getPosition(window).x != localMousePosition.x) {
-        double difference = sf::Mouse::getPosition(window).x - localMousePosition.x;
+        int difference = sf::Mouse::getPosition(window).x - localMousePosition.x;
         sf::Mouse::setPosition({ (int)window.getSize().x / 2, (int)window.getSize().y / 2 }, window);
         localMousePosition = sf::Mouse::getPosition(window);
         // Ignoring first frame after window focus or game start
@@ -324,7 +323,8 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     shiftPrecise({ dx * d_walkSpeed * elapsedTime * ((double)i_health / 100), dy * d_walkSpeed * elapsedTime * ((double)i_health / 100) });
 
     // Remember that we had focus and weren't in menu
-    return (b_hadFocus = true);
+    b_hadFocus = true;
+    return true;
 }
 
 // Returns position of wall on screen
@@ -371,11 +371,11 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
 
     double scaleFactor = (double)(h2 - h1) / SCREEN_HEIGHT;
     sf::Sprite sprite;
-    if (obj.object != "" && b_textures)
+    if (obj.object && b_textures)
     {
         int left = (int)(obj.progress * SCREEN_WIDTH);
         int top = 0;
-        if (W_world[obj.object].isMirror()) // In case of mirror
+        if (obj.object->isMirror()) // In case of mirror
         {
             sprite.setTexture(W_world.skyTexture());
             left = (int)(d_direction / 10 * SCREEN_WIDTH);
@@ -383,7 +383,7 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
         }
         else
         {
-            sprite.setTexture(W_world[obj.object].loadTexture());
+            sprite.setTexture(obj.object->loadTexture());
         }
         sprite.setTextureRect(sf::IntRect(left, top, SCREEN_WIDTH / DISTANCES_SEGMENTS, SCREEN_HEIGHT));
         sprite.setPosition(sf::Vector2f((float)shift * SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1)); // absolute position

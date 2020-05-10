@@ -66,6 +66,16 @@ void ServerUDP::stop()
     working = false;
 }
 
+void ServerUDP::addSpawn(Point2D point)
+{
+    spawns.push_back(point);
+}
+
+void ServerUDP::clearSpawns()
+{
+    spawns.clear();
+}
+
 bool ServerUDP::timeout(sf::Uint16 playerId)
 {
     sf::Packet packet;

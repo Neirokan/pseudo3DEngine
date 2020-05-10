@@ -18,10 +18,10 @@
 
 using namespace std;
 
-int main()
+// Read server/client settings and start both.
+// If client doesn't connect to the localhost - server doesn't start.
+void InitNetwork(ServerUDP& server, ClientUDP& client)
 {
-    // Server/Client settings
-
     std::string clientIp;
     sf::Uint16 clientPort;
     sf::Uint16 serverPort;
@@ -53,6 +53,17 @@ int main()
     }
     connectfile.close();
 
+    if (clientIp == sf::IpAddress::LocalHost)
+        server.start(serverPort);
+    client.connect(clientIp, clientPort);
+}
+
+int main()
+{
+    // Window should be created first because of drawing context.
+    sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Pseudo3DEngine");
+    window.setFramerateLimit(60);
+
     // Sounds
 
     sf::Music music;
@@ -72,8 +83,6 @@ int main()
     vector<Point2D> columnPositions = { {0,0}, {3,0}, {3,3}, {6,3}, {6,8}, {3,8}, {3,11}, {0,11}, {0,8}, {-3,8}, {-3,3}, {0,3} };
     vector<Circle2D> columns(12);
     vector<Poligon2D> walls(12);
-
-    sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "Pseudo3DEngine");
 
     World world(100, 100);
     Camera* camera = nullptr;
@@ -122,6 +131,8 @@ int main()
 
     ServerUDP server(world);
     ClientUDP client(world);
+    server.addSpawn({ 1.5, 1.5 });
+    server.addSpawn({ 1.5, 9 });
 
     // Game loop
 
@@ -130,13 +141,13 @@ int main()
         // Time update
         Time::update();
         double d_elapsedTime = Time::deltaTime();
+
         // Title update
         std::string title = "Pseudo3DEngine " + std::to_string((double)1 / d_elapsedTime) + "fps.";
         if (camera != nullptr)
-        {
             title += " x:" + std::to_string(camera->x()) + ", y:" + std::to_string(camera->y());
-        }
         window.setTitle(title);
+
         // Close event search
         sf::Event event;
         while (window.pollEvent(event))
@@ -145,16 +156,18 @@ int main()
                 window.close();
         }
 
-        window.clear();
         // Actually game
-        if (!menu.isPaused()) {
+        window.clear();
+        if (!menu.isPaused())
+        {
             window.setMouseCursorVisible(false);
             camera->updateDistances(world);
             camera->drawCameraView(window);
             // world.draw(window); // top-down debug map. To fix exception - look into "Camera::updateDistances"
 
             // if escape was pressed
-            if (!camera->keyboardControl(d_elapsedTime, window)) {
+            if (!camera->keyboardControl(d_elapsedTime, window))
+            {
                 client.disconnect();
                 server.stop();
                 menu.setPause();
@@ -162,12 +175,13 @@ int main()
                 backSounds.pause();
             };
 
-            // network update (must be after camera use)
+            // Network update (must be after camera use)
             server.update();
             client.update();
 
             // if client timeout or disconnected
-            if (!client.isWorking()) {
+            if (!client.isWorking())
+            {
                 menu.setPause();
                 music.play();
                 backSounds.pause();
@@ -175,16 +189,15 @@ int main()
             };
         }
         // Menu
-        else {
+        else
+        {
             window.setMouseCursorVisible(true);
             menu.drawMenu(window, d_elapsedTime);
             // if "play game" pressed
             if (!menu.isPaused()) {
                 window.clear({ 255,255,255 });
                 window.display();
-                if (clientIp == sf::IpAddress::LocalHost)
-                    server.start(serverPort);
-                client.connect(clientIp, clientPort);
+                InitNetwork(server, client);
                 // Waiting for connect and updating server if it's same window
                 while (client.isWorking() && !client.connected())
                 {
@@ -215,12 +228,8 @@ int main()
             }
         }
         window.display();
-        // Sleep if there are more than 60 fps
-        std::chrono::duration<double> t = std::chrono::system_clock::now().time_since_epoch();
-        d_elapsedTime = t.count() - Time::time();
-        if (d_elapsedTime < 1 / 60.0)
-            this_thread::sleep_for(chrono::milliseconds((long long)(1000 * (1 / 60.0 - d_elapsedTime))));
     }
 
+    ResourceManager::unloadAllResources();
     return 0;
 }

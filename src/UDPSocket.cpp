@@ -48,7 +48,7 @@ void UDPSocket::setTimeoutCallback(std::function<bool(sf::Uint16)> callback)
     _timeoutCallback = std::move(callback);
 }
 
-void UDPSocket::clearTimeoutCallback(std::function<bool(sf::Uint16)> callback)
+void UDPSocket::clearTimeoutCallback()
 {
     _timeoutCallback = nullptr;
 }
