@@ -44,7 +44,7 @@ Menu::Menu()
 
     if (b_textures)
         buttons[4].press();
-    if (smooth)
+    if (b_smooth)
         buttons[5].press();
     if (b_collision)
         buttons[6].press();
@@ -111,7 +111,7 @@ void Menu::drawMenu(sf::RenderWindow& window, double elapsedTime)
                     else if (buttons[i].name == "SMOOTHING")
                     {
                         buttons[i].press();
-                        smooth = buttons[i].pressed;
+                        b_smooth = buttons[i].pressed;
                         b_pressing = false;
                     }
                     else if (buttons[i].name == "COLLISION")
@@ -157,4 +157,44 @@ void Menu::settings(sf::RenderTarget& window)
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         b_settings = false;
+}
+
+bool Menu::isPaused()
+{
+    return b_pause;
+}
+
+void Menu::setPause(bool active)
+{
+    b_pause = active;
+}
+
+bool Menu::isSmooth()
+{
+    return b_smooth;
+}
+
+void Menu::setSmooth(bool active)
+{
+    b_smooth = active;
+}
+
+bool Menu::isCollision()
+{
+    return b_collision;
+}
+
+void Menu::setCollision(bool active)
+{
+    b_collision = active;
+}
+
+bool Menu::isTextures()
+{
+    return b_textures;
+}
+
+void Menu::setTextures(bool active)
+{
+    b_textures = active;
 }

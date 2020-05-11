@@ -29,6 +29,10 @@ struct Point2D
     double operator*(const Point2D& point2D) const;
     // Returns cross product
     double cross(const Point2D& point2D) const;
+    // Returns dot product, but static
+    static double dot(const Point2D& a, const Point2D& b);
+    // Returns cross product, but static
+    static double cross(const Point2D& a, const Point2D& b);
     // Returns normalized vector
     Point2D normalize();
     // Returns squared vector length

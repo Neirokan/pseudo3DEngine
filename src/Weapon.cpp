@@ -3,6 +3,9 @@
 //
 
 #include "Weapon.h"
+#include "ResourceManager.h"
+#include "Point2D.h"
+#include <chrono>
 
 Weapon::Weapon(int amount) : i_amount(amount)
 {
@@ -27,6 +30,16 @@ Weapon::Weapon(const Weapon& weapon)
     this->d_amplitude = weapon.d_amplitude;
 
     this->i_damage = weapon.i_damage;
+}
+
+double Weapon::speed() const
+{
+    return d_speed;
+}
+
+int Weapon::damage() const
+{
+    return i_damage;
 }
 
 void Weapon::choiceWeapon(std::string name)

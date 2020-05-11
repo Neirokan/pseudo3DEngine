@@ -4,22 +4,93 @@
 
 #include "Camera.h"
 #include <cmath>
-#include <windows.h>
 #include "ClientUDP.h"
-
 using namespace std;
 
-double Camera::angleInited = 0;
-double Camera::directionSin = 0;
-double Camera::directionCos = 0;
-double Camera::horizontalCos[DISTANCES_SEGMENTS];
-double Camera::horizontalSin[DISTANCES_SEGMENTS];
-double Camera::verticalTan[SCREEN_HEIGHT];
+Camera::Camera(World& world, Point2D position, double vPos, double height, double direction, double health, std::string texture, double fieldOfView, double eyesHeight, double depth, double walkSpeed, double jumpSpeed, double viewSpeed)
+    : W_world(world), Player(position, vPos, height, health, texture), d_direction(direction), d_fieldOfView(fieldOfView), d_eyesHeight(eyesHeight), d_depth(depth), d_walkSpeed(walkSpeed), d_jumpSpeed(jumpSpeed), d_viewSpeed(viewSpeed)
+{
+    Weapon weapon1(100000);
+    weapon1.choiceWeapon("shotgun");
+    v_weapons.push_back(weapon1);
+
+    walkSound.setBuffer(*ResourceManager::loadSoundBuffer(WALK_SOUND));
+    walkSound.setLoop(true);
+    walkSound.setVolume(50.f);
+
+    for (int i = 0; i < DISTANCES_SEGMENTS; i++)
+    {
+        double halfWidth = tan(d_fieldOfView / 2) * ((double)SCREEN_WIDTH / SCREEN_HEIGHT);
+        double offset = ((i * 2.0 / (DISTANCES_SEGMENTS - 1.0)) - 1.0) * halfWidth;
+        Point2D dir = { 1, 1 * offset };
+        dir = dir.normalize();
+        double angle = atan2(dir.y, dir.x);
+        horizontalCos[i] = cos(angle);
+        horizontalSin[i] = sin(angle);
+    }
+    for (int i = 0; i < SCREEN_HEIGHT; i++)
+    {
+        double halfWidth = tan(d_fieldOfView / 2);
+        double offset = ((i * 2.0 / (SCREEN_HEIGHT - 1.0)) - 1.0) * halfWidth;
+        Point2D dir = { 1, 1 * offset };
+        dir = dir.normalize();
+        verticalTan[i] = tan(atan2(dir.y, dir.x));
+    }
+}
+
+//Camera::Camera(const Camera& camera) : Player(camera), W_world(camera.W_world)
+//{
+//    v_distances = camera.v_distances;
+//    allCollisions = camera.allCollisions;
+//    d_direction = camera.d_direction;
+//    d_depth = camera.d_depth;
+//    d_fieldOfView = camera.d_fieldOfView;
+//    d_eyesHeight = camera.d_eyesHeight;
+//    d_walkSpeed = camera.d_walkSpeed;
+//    d_viewSpeed = camera.d_viewSpeed;
+//    b_collision = camera.b_collision;
+//    b_textures = camera.b_textures;
+//    b_smooth = camera.b_smooth;
+//    localMousePosition = camera.localMousePosition;
+//    v_weapons = camera.v_weapons;
+//    i_selectedWeapon = camera.i_selectedWeapon;
+//    walkSound = camera.walkSound;
+//}
+
+bool Camera::isSmooth()
+{
+    return b_smooth;
+}
+
+void Camera::setSmooth(bool active)
+{
+    b_smooth = active;
+}
+
+bool Camera::isCollision()
+{
+    return b_collision;
+}
+
+void Camera::setCollision(bool active)
+{
+    b_collision = active;
+}
+
+bool Camera::isTextures()
+{
+    return b_textures;
+}
+
+void Camera::setTextures(bool active)
+{
+    b_textures = active;
+}
 
 // Just increase distance for all collisions in v_RayCastStructure
 void Camera::recursiveIncreaseDistance(std::vector<RayCastStructure>& v_RayCastStructure, double distance)
 {
-    for(auto& rcs : v_RayCastStructure)
+    for (auto& rcs : v_RayCastStructure)
     {
         rcs.distance += distance;
         recursiveIncreaseDistance(rcs.v_mirrorRayCast, distance);
@@ -27,13 +98,13 @@ void Camera::recursiveIncreaseDistance(std::vector<RayCastStructure>& v_RayCastS
 }
 
 // Add player to the list of existing players
-void Camera::addCamera(std::string name, Camera& camera)
+void Camera::addPlayer(std::string name, std::shared_ptr<Player> camera)
 {
     m_playersOnTheScreen.insert({ name, camera });
 }
 
 // Remove player from the list of existing players
-void Camera::removeCamera(std::string name)
+void Camera::removePlayer(const std::string& name)
 {
     m_playersOnTheScreen.erase(name);
 }
@@ -144,7 +215,7 @@ void Camera::updateDistances(const World& world)
     double halfWidth = tan(d_fieldOfView / 2) * ((double)SCREEN_WIDTH / SCREEN_HEIGHT);
 
     int i;
-    int segs = 2 * PI / d_fieldOfView * DISTANCES_SEGMENTS;
+    int segs = static_cast<int>(2 * PI / d_fieldOfView * DISTANCES_SEGMENTS);
 
     // Visible for player segments
     for (i = 0; i < DISTANCES_SEGMENTS; i++) // Need top-down map? Set limit to segs. No need? DISTANCE_SEGMENTS.
@@ -182,7 +253,7 @@ void Camera::updateDistances(const World& world)
 // Draw camera on 2d map
 void Camera::draw(sf::RenderTarget& window)
 {
-    if (v_distances.empty() || i_health <= 0)
+    if (v_distances.empty() || health() <= 0)
         return;
 
     sf::CircleShape circle;
@@ -201,7 +272,7 @@ void Camera::draw(sf::RenderTarget& window)
     for (int i = 0; i <= CONVEX_NUMBER; i++)
     {
         int index = v_distances[(int)i * DISTANCES_SEGMENTS / CONVEX_NUMBER].size() - 1;
-        triangle.setPoint(i + 1, sf::Vector2f(v_distances[(int)i * DISTANCES_SEGMENTS / CONVEX_NUMBER][index].distance * cos(left + (right - left) * i / CONVEX_NUMBER) * SCALE, v_distances[(int)i * DISTANCES_SEGMENTS / CONVEX_NUMBER][index].distance * sin(left + (right - left) * i / CONVEX_NUMBER) * SCALE));
+        triangle.setPoint(i + 1, sf::Vector2f(static_cast<float>(v_distances[i * DISTANCES_SEGMENTS / CONVEX_NUMBER][index].distance * cos(left + (right - left) * i / CONVEX_NUMBER) * SCALE), static_cast<float>(v_distances[i * DISTANCES_SEGMENTS / CONVEX_NUMBER][index].distance * sin(left + (right - left) * i / CONVEX_NUMBER) * SCALE)));
     }
     triangle.setOutlineColor(OUTLINE_CAMERA_COLOR);
     triangle.setFillColor(FILED_OF_VEW_COLOR);
@@ -213,18 +284,33 @@ void Camera::draw(sf::RenderTarget& window)
 }
 
 // Returns player if ray hits him
-std::pair<Object2D*, double> Camera::cameraRayCheck(RayCastStructure& structure) {
+std::pair<Object2D*, double> Camera::cameraRayCheck(RayCastStructure& structure)
+{
     std::pair<Object2D*, double> result = { nullptr, 1 };
+
     // If hit player
-    if (structure.object->type() == 1)
+    if (structure.object->type() == ObjectType::Player)
     {
-        result.first = structure.object;
-        result.second = structure.distance;
+        auto heights = heightInPixels(structure.distance, structure.object->height(), dynamic_cast<Player*>(structure.object)->vPos());
+        heights.first = std::min(mirrorBot, std::max(mirrorTop, heights.first));
+        heights.second = std::min(mirrorBot, std::max(mirrorTop, heights.second));
+        if (heights.first < SCREEN_HEIGHT / 2 && heights.second > SCREEN_HEIGHT / 2)
+        {
+            result.first = structure.object;
+            result.second = structure.distance;
+        }
     }
     // If hit mirror
     else if (!structure.v_mirrorRayCast.empty())
     {
-        return cameraRayCheck(structure.v_mirrorRayCast[structure.v_mirrorRayCast.size() - 1]);
+        auto heights = heightInPixels(structure.distance, structure.object->height(), 0);
+        double mirrorTopSave = mirrorTop;
+        double mirrorBotSave = mirrorBot;
+        mirrorTop = std::min(mirrorBotSave, std::max(mirrorTopSave, heights.first));
+        mirrorBot = std::min(mirrorBotSave, std::max(mirrorTopSave, heights.second));
+        result = cameraRayCheck(structure.v_mirrorRayCast[structure.v_mirrorRayCast.size() - 1]);
+        mirrorTop = mirrorTopSave;
+        mirrorBot = mirrorBotSave;
     }
     return result;
 }
@@ -289,6 +375,10 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
         dx -= d_cos;
         dy -= d_sin;
     }
+    if (vPos() == 0 && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    {
+        d_vSpeed = d_jumpSpeed * health() / 100;
+    }
 
     // Fire
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
@@ -309,7 +399,7 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     }
 
     // Start/stop walk sound
-    if ((dx * dx + dy * dy) > d_walkSpeed * elapsedTime * d_walkSpeed * elapsedTime / 10)
+    if ((dx * dx + dy * dy) > d_walkSpeed * elapsedTime * d_walkSpeed * elapsedTime / 10 && vPos() <= 0)
     {
         if (walkSound.getStatus() != sf::Sound::Status::Playing)
             walkSound.play();
@@ -320,7 +410,8 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     }
 
     // Move player
-    shiftPrecise({ dx * d_walkSpeed * elapsedTime * ((double)i_health / 100), dy * d_walkSpeed * elapsedTime * ((double)i_health / 100) });
+    shiftPrecise({ dx * d_walkSpeed * elapsedTime * (health() / 100), dy * d_walkSpeed * elapsedTime * (health() / 100) }, d_vSpeed * elapsedTime);
+    d_vSpeed -= 9.8 * elapsedTime;
 
     // Remember that we had focus and weren't in menu
     b_hadFocus = true;
@@ -328,12 +419,12 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
 }
 
 // Returns position of wall on screen
-pair<double, double> Camera::heightInPixels(double distance, double height)
+pair<double, double> Camera::heightInPixels(double distance, double height, double vertical)
 {
     pair<double, double> h = { 0, 0 };
     double mod = tan(d_fieldOfView / 2) * distance;
-    h.first = (1 - (height - d_eyesHeight) / mod) * SCREEN_HEIGHT / 2;
-    h.second = (1 + d_eyesHeight / mod) * SCREEN_HEIGHT / 2;
+    h.first = (1 - (height - d_eyesHeight - vPos() + vertical) / mod) * SCREEN_HEIGHT / 2;
+    h.second = (1 + (d_eyesHeight + vPos() - vertical) / mod) * SCREEN_HEIGHT / 2;
     return h;
 }
 
@@ -343,10 +434,14 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
     sf::ConvexShape polygon;
     polygon.setPointCount(4);
 
-    pair<double, double> height_now = heightInPixels(obj.distance * horizontalCos[shift], obj.height);
+    int horIndex = shift / (SCREEN_WIDTH / DISTANCES_SEGMENTS);
+    double vertical = 0;
+    if (obj.object->type() == ObjectType::Player)
+        vertical = dynamic_cast<Player*>(obj.object)->vPos();
+    pair<double, double> height_now = heightInPixels(obj.distance * horizontalCos[horIndex], obj.height, vertical);
 
-    int h1 = (int)height_now.first;
-    int h2 = (int)height_now.second;
+    int h1 = (int)std::max(mirrorTop, std::min(mirrorBot, height_now.first));
+    int h2 = (int)std::min(mirrorBot, std::max(mirrorTop, height_now.second));
 
     polygon.setPoint(0, sf::Vector2f(0, (float)h1));
     polygon.setPoint(1, sf::Vector2f(0, (float)h2));
@@ -369,30 +464,50 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
     //polygon.setOutlineThickness(0); // we can make non zero thickness for debug
     polygon.setPosition((float)(shift * SCREEN_WIDTH / DISTANCES_SEGMENTS), 0);
 
-    double scaleFactor = (double)(h2 - h1) / SCREEN_HEIGHT;
     sf::Sprite sprite;
     if (obj.object && b_textures)
     {
-        int left = (int)(obj.progress * SCREEN_WIDTH);
-        int top = 0;
+        sprite.setPosition(sf::Vector2f((float)shift * SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1)); // absolute position
+        int left;
+        int top, finalTop;
+        int bot, finalBot;
         if (obj.object->isMirror()) // In case of mirror
         {
             sprite.setTexture(W_world.skyTexture());
             left = (int)(d_direction / 10 * SCREEN_WIDTH);
-            top = sprite.getTextureRect().height / 2 - SCREEN_HEIGHT / 2;
+            top = height_now.first / SCREEN_HEIGHT * sprite.getTextureRect().height;
+            bot = height_now.second / SCREEN_HEIGHT * sprite.getTextureRect().height;
+            double scaleFactor = (double)SCREEN_HEIGHT / sprite.getTextureRect().height;
+            sprite.scale(1, (float)scaleFactor);
         }
         else
         {
             sprite.setTexture(obj.object->loadTexture());
+            left = obj.progress * SCREEN_WIDTH;
+            top = 0;
+            bot = SCREEN_HEIGHT;
+            sprite.scale(1, (float)(height_now.second - height_now.first) / SCREEN_HEIGHT);
         }
-        sprite.setTextureRect(sf::IntRect(left, top, SCREEN_WIDTH / DISTANCES_SEGMENTS, SCREEN_HEIGHT));
-        sprite.setPosition(sf::Vector2f((float)shift * SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1)); // absolute position
-        sprite.scale(1, (float)scaleFactor);
+
+        if ((int)height_now.first != h1)
+            finalTop = top + (bot - top) * (h1 - height_now.first) / (height_now.second - height_now.first);
+        else
+            finalTop = top;
+
+        if ((int)height_now.second != h2)
+            finalBot = top + (bot - top) * (h2 - height_now.first) / (height_now.second - height_now.first);
+        else
+            finalBot = bot;
+
+        sprite.setTextureRect(sf::IntRect(left, finalTop, SCREEN_WIDTH / DISTANCES_SEGMENTS, finalBot - finalTop));
         window.draw(sprite);
     }
 
     if (abs(obj.distance - d_depth) > 0.001)
         window.draw(polygon);
+
+    mirrorTop = h1;
+    mirrorBot = h2;
 
     // Floor drawing
 
@@ -401,9 +516,9 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
     if (b_smooth || (f == 0) || (x % FLOOR_SEGMENT_SIZE != 0) || !b_textures) return;
 
     const int scale = 400;
-    double baseOffset = 0.5 / horizontalCos[shift];
-    double horMod = horizontalCos[shift] * directionCos - horizontalSin[shift] * directionSin;// cos (horizontalAngles[shift] + d_direction) = cos a * cos b - sin a * sin b
-    double verMod = horizontalSin[shift] * directionCos + horizontalCos[shift] * directionSin;// sin (horizontalAngles[shift] + d_direction) = sin a * cos b + cos a * sin b
+    double baseOffset = (d_eyesHeight + vPos()) / horizontalCos[horIndex];
+    double horMod = horizontalCos[horIndex] * directionCos - horizontalSin[horIndex] * directionSin;// cos (horizontalAngles[shift] + d_direction) = cos a * cos b - sin a * sin b
+    double verMod = horizontalSin[horIndex] * directionCos + horizontalCos[horIndex] * directionSin;// sin (horizontalAngles[shift] + d_direction) = sin a * cos b + cos a * sin b
 
     for (int z = h2; z < SCREEN_HEIGHT; z += FLOOR_SEGMENT_SIZE)
     {
@@ -424,6 +539,8 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
 void Camera::recursiveDrawing(sf::RenderTarget& window, const std::vector<RayCastStructure>& v_RayCastStructure, int shift, int rec)
 {
     int i = 0;
+    double mirrorTopSave = mirrorTop;
+    double mirrorBotSave = mirrorBot;
     for (const auto& k : v_RayCastStructure)
     {
         if (i + 1 != v_RayCastStructure.size() || (rec != 1))
@@ -433,6 +550,8 @@ void Camera::recursiveDrawing(sf::RenderTarget& window, const std::vector<RayCas
         i++;
         if (!k.v_mirrorRayCast.empty())
             recursiveDrawing(window, k.v_mirrorRayCast, shift, 2);
+        mirrorTop = mirrorTopSave;
+        mirrorBot = mirrorBotSave;
     }
 }
 
@@ -466,29 +585,6 @@ void Camera::drawCameraView(sf::RenderTarget& window)
     if (v_distances.empty())
         return;
 
-    if (angleInited != d_fieldOfView)
-    {
-        for (int i = 0; i < DISTANCES_SEGMENTS; i++)
-        {
-            double halfWidth = tan(d_fieldOfView / 2) * ((double)SCREEN_WIDTH / SCREEN_HEIGHT);
-            double offset = ((i * 2.0 / (DISTANCES_SEGMENTS - 1.0)) - 1.0) * halfWidth;
-            Point2D dir = { 1, 1 * offset };
-            dir = dir.normalize();
-            double angle = atan2(dir.y, dir.x);
-            horizontalCos[i] = cos(angle);
-            horizontalSin[i] = sin(angle);
-        }
-        for (int i = 0; i < SCREEN_HEIGHT; i++)
-        {
-            double halfWidth = tan(d_fieldOfView / 2);
-            double offset = ((i * 2.0 / (SCREEN_HEIGHT - 1.0)) - 1.0) * halfWidth;
-            Point2D dir = { 1, 1 * offset };
-            dir = dir.normalize();
-            verticalTan[i] = tan(atan2(dir.y, dir.x));
-        }
-        angleInited = d_fieldOfView;
-    }
-
     directionSin = sin(d_direction);
     directionCos = cos(d_direction);
 
@@ -500,7 +596,7 @@ void Camera::drawCameraView(sf::RenderTarget& window)
         sprite_sky.setTextureRect(sf::IntRect((int)(d_direction * SCREEN_WIDTH / 2), sprite_sky.getTextureRect().height / 2 - SCREEN_HEIGHT / 2, SCREEN_WIDTH, 1080));
         sprite_sky.setPosition(sf::Vector2f(0, 0)); // absolute position
         window.draw(sprite_sky);
-        W_world.floor().setRotation(-d_direction / PI * 180 - 90);
+        W_world.floor().setRotation(static_cast<float>(-d_direction / PI * 180 - 90));
 
         if (b_smooth)
         {
@@ -510,9 +606,10 @@ void Camera::drawCameraView(sf::RenderTarget& window)
             const int scale = 400;
             for (int i = 0; i < SCREEN_WIDTH; i++)
             {
-                double baseOffset = 0.5 / horizontalCos[i];
-                double horMod = horizontalCos[i] * directionCos - horizontalSin[i] * directionSin;
-                double verMod = horizontalSin[i] * directionCos + horizontalCos[i] * directionSin;
+                int horIndex = i / (SCREEN_WIDTH / DISTANCES_SEGMENTS);
+                double baseOffset = (d_eyesHeight + vPos()) / horizontalCos[horIndex];
+                double horMod = horizontalCos[horIndex] * directionCos - horizontalSin[horIndex] * directionSin;
+                double verMod = horizontalSin[horIndex] * directionCos + horizontalCos[horIndex] * directionSin;
                 for (int j = SCREEN_HEIGHT / 2; j < SCREEN_HEIGHT; j++)
                 {
                     double offset = baseOffset / verticalTan[j];
@@ -538,17 +635,18 @@ void Camera::drawCameraView(sf::RenderTarget& window)
         recursiveDrawing(window, v_distances[i], i);
     }
 
+    double halfWidth = tan(d_fieldOfView / 2) * ((double)SCREEN_WIDTH / SCREEN_HEIGHT);
     //m_playersOnTheScreen
     for (const auto& player : m_playersOnTheScreen)
     {
-        Point2D enemyDirection = (player.second.position() - position()).normalize();
-        Point2D cameraLeftDirection = { cos(d_direction - d_fieldOfView / 2), sin(d_direction - d_fieldOfView / 2) };
-        double angle = acos(enemyDirection * cameraLeftDirection);
-        if ((cameraLeftDirection.x * enemyDirection.y - enemyDirection.x * cameraLeftDirection.y) > 0)
+        Point2D enemyDirection = (player.second->position() - position()).normalize();
+        enemyDirection = { enemyDirection.x * cos(-d_direction) - enemyDirection.y * sin(-d_direction), enemyDirection.x * sin(-d_direction) + enemyDirection.y * cos(-d_direction) };
+        double offset = enemyDirection.y / enemyDirection.x;
+        if (abs(offset) < halfWidth && enemyDirection.x > 0)
         {
-            int xPos = (int)(SCREEN_WIDTH * angle / d_fieldOfView);
-            int yPos = (int)(heightInPixels((player.second.position() - position()).abs(), 1).first);
-            auto healthProgress = (double)player.second.health();
+            int xPos = (int)((enemyDirection.y / enemyDirection.x / halfWidth + 1.0) / 2.0 * (DISTANCES_SEGMENTS - 1.0));
+            int yPos = (int)(heightInPixels((player.second->position() - position()).abs(), player.second->height() + 0.2, player.second->vPos()).first);
+            auto healthProgress = (double)player.second->health();
             drawHealth(window, xPos - 50, yPos, 100, (int)healthProgress);
         }
     }
@@ -564,8 +662,14 @@ double Camera::scalarWithNormal(Point2D edge, Point2D vector)
     return scalar;
 }
 
-void Camera::shiftPrecise(Point2D vector)
+void Camera::shiftPrecise(Point2D vector, double vertical)
 {
+    setVPos(vPos() + vertical);
+    if (vPos() < 0)
+    {
+        d_vSpeed = 0;
+        setVPos(0);
+    }
     if (!b_collision)
     {
         shift(vector);
@@ -602,12 +706,4 @@ void Camera::nextWeapon()
         i_selectedWeapon++;
     else
         i_selectedWeapon = 0;
-}
-
-bool Camera::reduceHealth(double damage)
-{
-    if (i_health > 100)
-        i_health = 100;
-    i_health -= damage;
-    return i_health <= 0;
 }

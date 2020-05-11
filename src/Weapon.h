@@ -4,10 +4,10 @@
 
 #ifndef PSEUDO3DENGINE_WEAPON_H
 #define PSEUDO3DENGINE_WEAPON_H
+
 #include <SFML/Audio.hpp>
-#include <chrono>
+#include "Idrawable.h"
 #include "settings.h"
-#include "Object2D.h"
 
 class Weapon : virtual public Idrawable
 {
@@ -35,18 +35,15 @@ private:
     double d_lastFireTime = 0;
 public:
     Weapon(int amount);
-
     Weapon(const Weapon& weapon);
-
-    void choiceWeapon(std::string name);
-
-    bool fire();
-
-    double speed() const { return d_speed; }
 
     void draw(sf::RenderTarget& window) override;
 
-    int damage() const { return i_damage; }
+    double speed() const;
+    int damage() const;
+
+    void choiceWeapon(std::string name);
+    bool fire();
 };
 
 

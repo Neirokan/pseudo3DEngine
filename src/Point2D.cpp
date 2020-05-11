@@ -80,6 +80,16 @@ double Point2D::cross(const Point2D& point2D) const
     return this->x * point2D.y - this->y * point2D.x;
 }
 
+double Point2D::dot(const Point2D& a, const Point2D& b)
+{
+    return a.x * b.x + a.y * b.y;
+}
+
+double Point2D::cross(const Point2D& a, const Point2D& b)
+{
+    return a.x * b.y - a.y * b.x;
+}
+
 Point2D Point2D::normalize()
 {
     double length = this->abs();

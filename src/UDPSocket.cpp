@@ -166,6 +166,9 @@ MsgType UDPSocket::receive(sf::Packet& packet, sf::Uint16& senderId)
 
     if (type == MsgType::Connect)
     {
+        sf::Uint32 version = 0;
+        if (!(packet >> version) || version != NETWORK_VERSION)
+            return MsgType::Fake;
         sf::Uint16 tmp;
         for (tmp = 64; tmp >= 1; tmp--)
         {

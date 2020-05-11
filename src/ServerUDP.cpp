@@ -7,73 +7,76 @@
 #include "MsgType.h"
 #include "settings.h"
 
-ServerUDP::ServerUDP(World& world) : world(world), lastBroadcast(-INFINITY), working(false)
+ServerUDP::ServerUDP(World& world) : _world(world), _lastBroadcast(-INFINITY), _working(false)
 {
-    socket.setTimeoutCallback(std::bind(&ServerUDP::timeout, this, std::placeholders::_1));
+    _socket.setTimeoutCallback(std::bind(&ServerUDP::timeout, this, std::placeholders::_1));
 }
 
 bool ServerUDP::isWorking() const
 {
-    return working;
+    return _working;
 }
 
 bool ServerUDP::start(sf::Uint16 port)
 {
-    return working = socket.bind(port);
+    return _working = _socket.bind(port);
 }
 
 void ServerUDP::update()
 {
-    if (!working)
+    if (!_working)
         return;
 
     while (process());
 
     // World state broadcast
 
-    if (Time::time() - lastBroadcast > 1 / WORLD_UPDATE_RATE)
+    if (Time::time() - _lastBroadcast > 1 / WORLD_UPDATE_RATE)
     {
         sf::Packet updatePacket;
         updatePacket << MsgType::WorldUpdate;
 
-        for (auto&& player : players)
+        for (auto&& player : _players)
         {
-            Camera& camera = player.second;
-            camera.reduceHealth(-1 * (Time::time() - lastBroadcast));
-            updatePacket << player.first << camera.position().x << camera.position().y << camera.health();
+            Player& camera = *player.second;
+            camera.reduceHealth(-1 * (Time::time() - _lastBroadcast));
+            updatePacket << player.first << camera.position().x << camera.position().y << camera.vPos() << camera.health();
         }
 
-        for (auto&& player : players)
+        for (auto&& player : _players)
         {
-            socket.send(updatePacket, player.first);
+            _socket.send(updatePacket, player.first);
         }
 
-        lastBroadcast = Time::time();
+        _lastBroadcast = Time::time();
     }
 
     // Socket update
 
-    socket.update();
+    _socket.update();
 }
 
 void ServerUDP::stop()
 {
-    for (auto it = players.begin(); it != players.end();)
+    for (auto it = _players.begin(); it != _players.end();)
     {
-        players.erase(it++);
+        sf::Packet packet;
+        packet << MsgType::Disconnect << it->first;
+        _socket.send(packet, it->first);
+        _players.erase(it++);
     }
-    socket.unbind();
-    working = false;
+    _socket.unbind();
+    _working = false;
 }
 
 void ServerUDP::addSpawn(Point2D point)
 {
-    spawns.push_back(point);
+    _spawns.push_back(point);
 }
 
 void ServerUDP::clearSpawns()
 {
-    spawns.clear();
+    _spawns.clear();
 }
 
 bool ServerUDP::timeout(sf::Uint16 playerId)
@@ -81,10 +84,10 @@ bool ServerUDP::timeout(sf::Uint16 playerId)
     sf::Packet packet;
     packet << MsgType::Disconnect << playerId;
 
-    players.erase(playerId);
-    for (auto&& player : players)
+    _players.erase(playerId);
+    for (auto&& player : _players)
     {
-        socket.sendRely(packet, player.first);
+        _socket.sendRely(packet, player.first);
     }
 
     return true;
@@ -98,63 +101,64 @@ bool ServerUDP::process()
     sf::Uint16 senderId;
     MsgType type;
 
-    if ((type = socket.receive(packet, senderId)) == MsgType::None)
+    if ((type = _socket.receive(packet, senderId)) == MsgType::None)
         return false;
 
     sf::Packet sendPacket;
     sf::Packet extraPacket;
     sf::Uint16 targetId;
-    double buf[2];
+    double buf[3];
 
     switch (type)
     {
 
     case MsgType::Connect:
-        extraPacket << MsgType::Connect << senderId;
+        extraPacket << MsgType::Connect << NETWORK_VERSION << senderId;
         sendPacket << MsgType::WorldInit << senderId;
-        players.insert({ senderId, Camera(world, spawns[senderId % spawns.size()]) });
-        for (auto&& player : players)
+        _players.insert({ senderId, std::shared_ptr<Player>(new Player(_spawns[senderId % _spawns.size()])) });
+        for (auto&& player : _players)
         {
-            Camera& camera = player.second;
-            sendPacket << player.first << camera.x() << camera.y() << camera.health();
+            Player& camera = *player.second;
+            sendPacket << player.first << camera.x() << camera.y() << camera.vPos() << camera.health();
             if (player.first != senderId)
-                socket.sendRely(extraPacket, player.first);
+                _socket.sendRely(extraPacket, player.first);
         }
-        socket.sendRely(sendPacket, senderId);
+        _socket.sendRely(sendPacket, senderId);
 
         break;
 
     case MsgType::Disconnect:
         sendPacket << MsgType::Disconnect << senderId;
-        players.erase(senderId);
-        socket.removeConnection(senderId);
-        for (auto&& player : players)
+        _players.erase(senderId);
+        _socket.removeConnection(senderId);
+        for (auto&& player : _players)
         {
-            socket.sendRely(sendPacket, player.first);
+            _socket.sendRely(sendPacket, player.first);
         }
         break;
 
     case MsgType::PlayerUpdate:
-        packet >> buf[0] >> buf[1];
-        players.at(senderId).setPosition({ buf[0], buf[1] });
+        packet >> buf[0] >> buf[1] >> buf[2];
+        _players.at(senderId)->setPosition({ buf[0], buf[1] });
+        _players.at(senderId)->setVPos(buf[2]);
         break;
 
     case MsgType::Shoot:
         packet >> targetId >> buf[0] >> buf[1];
         sendPacket << MsgType::Shoot;
         
-        if (players.at(targetId).reduceHealth(buf[0] / buf[1]))
+        if (_players.at(targetId)->reduceHealth(buf[0] / buf[1]))
         {
-            sendPacket << true << spawns[targetId % spawns.size()].x << spawns[targetId % spawns.size()].y;
-            players.at(targetId).setHealth(100);
-            players.at(targetId).setPosition(spawns[targetId % spawns.size()]);
+            sendPacket << true << _spawns[targetId % _spawns.size()].x << _spawns[targetId % _spawns.size()].y;
+            _players.at(targetId)->setHealth(100);
+            _players.at(targetId)->setPosition(_spawns[targetId % _spawns.size()]);
         }
         else
         {
             double dir = 2 * PI * rand() / RAND_MAX;
             sendPacket << false << 0.05 * cos(dir) << 0.05 * sin(dir);
         }
-        socket.sendRely(sendPacket, targetId);
+        _socket.sendRely(sendPacket, targetId);
         break;
     }
     return true;

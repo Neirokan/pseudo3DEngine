@@ -6,8 +6,6 @@
 #define PSEUDO3DENGINE_WORLD_H
 
 #include "Object2D.h"
-#include <SFML/Audio.hpp>
-#include <string>
 #include <map>
 
 class World : virtual public Idrawable
@@ -23,47 +21,28 @@ private:
     sf::Sprite S_floor;
 
 public:
-    World(double length, double width, std::string sky_texture = SKY_TEXTURE, std::string floor_texture = FLOOR_TEXTURE) : d_length(length), d_width(width), T_floor_texture(*ResourceManager::loadTexture(floor_texture)), T_sky_texture(*ResourceManager::loadTexture(sky_texture))
-    {
-        S_floor.setTexture(floorTexture());
-    }
-
-    sf::Sprite& floor()
-    {
-        return S_floor;
-    }
-
-    bool addObject2D(Object2D&  object, std::string name)
-    {
-        object.setName(name);
-        return map_objects.insert({name, object}).second;
-    }
-    Object2D& findObject2D(std::string name) { return map_objects.at(name); }
-    Object2D& findObject2D(std::string name) const { return map_objects.at(name); }
-    bool isExist(std::string name) const {return map_objects.count(name) != 0; }
-
-    bool removeObject2D(std::string name) { return map_objects.erase(name) > 0; }
-
-    Object2D& operator[](std::string name) { return findObject2D(name); }
-
-    Object2D& operator[](std::string name) const { return findObject2D(name); }
-
-    double width() const { return d_width; }
-    double length() const { return d_length; }
+    World(double length, double width, const std::string& sky_texture = SKY_TEXTURE, const std::string& floor_texture = FLOOR_TEXTURE);
 
     void draw(sf::RenderTarget& window) override;
 
-    const std::map<std::string, Object2D&>& objects() const { return map_objects; }
+    sf::Sprite& floor();
+    const sf::Texture& skyTexture() const;
+    const sf::Texture& floorTexture() const;
 
-    const sf::Texture& skyTexture()
-    {
-        return T_sky_texture;
-    }
+    const std::map<std::string, Object2D&>& objects() const;
 
-    const sf::Texture& floorTexture()
-    {
-        return T_floor_texture;
-    }
+    bool addObject2D(Object2D& object, std::string name);
+    bool removeObject2D(const std::string& name);
+
+    bool isExist(const std::string& name) const;
+    Object2D& findObject2D(const std::string& name);
+    const Object2D& findObject2D(const std::string& name) const;
+
+    Object2D& operator[](const std::string& name);
+    const Object2D& operator[](const std::string& name) const;
+
+    double width() const;
+    double length() const;
 };
 
 

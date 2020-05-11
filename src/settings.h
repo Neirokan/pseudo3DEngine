@@ -14,6 +14,7 @@
 #define SCALE_WINDOW 500
 
 // NETWORK
+#define NETWORK_VERSION 1U
 #define TIMEOUT_SECONDS 5
 #define WORLD_UPDATE_RATE 30
 #define RELIABLE_RETRY_TIME (1.0/20)
@@ -110,5 +111,6 @@
 
 #define GUN_SHOT_SOUND "sounds/gunShot.ogg"
 #define WALK_SOUND "sounds/walkSound.ogg"
+
 
 #endif //PSEUDO3DENGINE_SETTINGS_H

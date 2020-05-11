@@ -9,17 +9,18 @@
 #include "Camera.h"
 #include "ReliableMsg.h"
 #include "UDPSocket.h"
+#include <memory>
 
 class ClientUDP
 {
 private:
-    World& world;
-    UDPSocket socket;
-    double lastBroadcast;
-    bool working;
+    World& _world;
+    Camera* _localPlayer;
+    UDPSocket _socket;
+    double _lastBroadcast;
+    bool _working;
 
-    std::map<sf::Uint16, Camera> players;
-    std::vector<Point2D> spawns = { {1.5, 1.5}, {1.5, 9} };
+    std::map<sf::Uint16, std::shared_ptr<Player>> _players;
 
     bool process();
     bool timeout(sf::Uint16 id);
@@ -28,7 +29,7 @@ public:
     ClientUDP(World& world);
     bool isWorking() const;
     bool connected() const;
-    Camera& camera();
+    Camera* localPlayer();
     void connect(sf::IpAddress ip, sf::Uint16 port);
     void disconnect();
     void update();

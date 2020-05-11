@@ -5,7 +5,7 @@
 #include "ResourceManager.h"
 #include <map>
 #include <memory>
-
+#include <iostream>
 namespace ResourceManager
 {
 	namespace
@@ -16,11 +16,15 @@ namespace ResourceManager
 
 	void unloadTextures()
 	{
+		for (auto it = _textures.begin(); it != _textures.end(); it++)
+			it->second.reset();
 		_textures.clear();
 	}
 
 	void unloadSoundBuffers()
 	{
+		for (auto it = _soundBuffers.begin(); it != _soundBuffers.end(); it++)
+			it->second.reset();
 		_soundBuffers.clear();
 	}
 

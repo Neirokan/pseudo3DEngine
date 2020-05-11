@@ -5,11 +5,9 @@
 #ifndef PSEUDO3DENGINE_CAMERA_H
 #define PSEUDO3DENGINE_CAMERA_H
 
-#include <algorithm>
-#include "Object2D.h"
+#include "Player.h"
 #include "World.h"
 #include "settings.h"
-#include "Menu.h"
 #include "Weapon.h"
 
 class ClientUDP;
@@ -31,23 +29,30 @@ struct CollisionInformation
     std::pair<Point2D, Point2D> edge;
 };
 
-class Camera : public Circle2D
+class Camera : public Player
 {
 private:
-    std::vector<std::vector<RayCastStructure>> v_distances;
+    double mirrorTop = -INFINITY;
+    double mirrorBot = INFINITY;
+    double directionSin = 0;
+    double directionCos = 0;
+    double horizontalCos[DISTANCES_SEGMENTS];
+    double horizontalSin[DISTANCES_SEGMENTS];
+    double verticalTan[SCREEN_HEIGHT];
 
-    //For collision detection
+    std::vector<std::vector<RayCastStructure>> v_distances;
     std::vector<CollisionInformation> allCollisions;
+    std::map<std::string, std::shared_ptr<Player>> m_playersOnTheScreen;
 
     double d_direction;
     double d_fieldOfView;
     double d_eyesHeight;
     double d_depth;
+    double d_vSpeed = 0;
 
+    double d_jumpSpeed;
     double d_walkSpeed;
     double d_viewSpeed;
-
-    double i_health;
 
     bool b_collision = true;
     bool b_hadFocus = false;
@@ -69,94 +74,39 @@ private:
     void drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure& obj, int shift, int f);
     void recursiveDrawing(sf::RenderTarget& window, const std::vector<RayCastStructure>& v_RayCastStructure, int shift, int rec = 1);
     static void recursiveIncreaseDistance(std::vector<RayCastStructure>& v_RayCastStructure, double distance);
-    std::pair<double, double> heightInPixels(double distance, double height);
+    std::pair<double, double> heightInPixels(double distance, double height, double vertical);
 
     static double scalarWithNormal(Point2D edge, Point2D vector);
 
     void fire();
     std::pair<Object2D*, double> cameraRayCheck(RayCastStructure& structure);
 
-    std::map<std::string, Camera&> m_playersOnTheScreen;
-    static double directionSin;
-    static double directionCos;
-    static double horizontalCos[DISTANCES_SEGMENTS];
-    static double horizontalSin[DISTANCES_SEGMENTS];
-    static double verticalTan[SCREEN_HEIGHT];
-    static double angleInited;
-
     static void drawHealth(sf::RenderTarget& window, int x, int y, int width, int health);
 public:
-    explicit Camera(World& world, Point2D position, double direction = 0, std::string texture = SKIN, int health = 100, double fieldOfView = PI/2, double height = 0.6, double eyesHeight = 0.5, double depth = 25, double walkSpeed = 1.7, double viewSpeed = .005)
-    : W_world(world), Circle2D(COLLISION_DISTANCE, position, height, texture, 4), d_direction(direction), d_fieldOfView(fieldOfView), d_eyesHeight(eyesHeight), d_depth(depth), d_walkSpeed(walkSpeed), d_viewSpeed(viewSpeed), i_health(health)
-    {
-        Weapon weapon1(100000);
-        weapon1.choiceWeapon("shotgun");
-        v_weapons.push_back(weapon1);
-
-        walkSound.setBuffer(*ResourceManager::loadSoundBuffer(WALK_SOUND));
-        walkSound.setLoop(true);
-        walkSound.setVolume(50.f);
-    }
-
-    Camera(const Camera& camera) : Circle2D(camera), W_world(camera.W_world) // copy constructor
-    {
-        d_height = camera.d_height;
-        v_points2D = camera.v_points2D;
-        p_position = camera.p_position;
-        v_distances = camera.v_distances;
-        allCollisions = camera.allCollisions;
-        d_direction = camera.d_direction;
-        d_depth = camera.d_depth;
-        d_fieldOfView = camera.d_fieldOfView;
-        d_eyesHeight = camera.d_eyesHeight;
-        d_walkSpeed = camera.d_walkSpeed;
-        d_viewSpeed = camera.d_viewSpeed;
-        i_health = camera.i_health;
-        b_collision = camera.b_collision;
-        b_textures = camera.b_textures;
-        b_smooth = camera.b_smooth;
-        localMousePosition = camera.localMousePosition;
-        v_weapons = camera.v_weapons;
-        i_selectedWeapon = camera.i_selectedWeapon;
-        walkSound = camera.walkSound;
-        setName(camera.getName());
-    }
-
-    bool cross(const std::pair<Point2D, Point2D>& ray, std::pair<Point2D, Point2D>& wall, Point2D& point, double& uv) override
-    {
-        return Object2D::cross(ray, wall, point, uv);
-    }
-
     ClientUDP* client = nullptr;
 
-    void updateDistances(const World& world);
-    void drawCameraView(sf::RenderTarget& window);
+    explicit Camera(World& world, Point2D position, double vPos = 0, double height = 0.6, double direction = 0, double health = 100, std::string texture = SKIN, double fieldOfView = PI / 2, double eyesHeight = 0.5, double depth = 25, double walkSpeed = 1.7, double jumpSpeed = 2.75, double viewSpeed = .005);
+    Camera(const Camera&) = delete;//Camera(const Camera& camera);
 
-    void draw(sf::RenderTarget& window) override;
+    void addPlayer(std::string name, std::shared_ptr<Player> camera);
+    void removePlayer(const std::string& name);
+
+    bool isSmooth();
+    void setSmooth(bool active);
+    bool isCollision();
+    void setCollision(bool active);
+    bool isTextures();
+    void setTextures(bool active);
 
     bool keyboardControl(double elapsedTime, sf::RenderWindow& window);
+    void updateDistances(const World& world);
+    void drawCameraView(sf::RenderTarget& window);
+    void draw(sf::RenderTarget& window) override;
 
-    void shiftPrecise(Point2D vector);
-
-    bool isSmooth() { return b_smooth; }
-    void switchSmooth() { b_smooth = !b_smooth; }
-    bool isCollision() { return b_collision; }
-    void switchCollision() { b_collision = !b_collision; }
-    bool isTextures() { return b_textures; }
-    void switchTextures() { b_textures = !b_textures; }
+    void shiftPrecise(Point2D vector, double vertical = 0);
 
     void previousWeapon();
     void nextWeapon();
-
-    double health() const { return i_health; }
-    bool reduceHealth(double damage = 0);
-    void fullHealth () { i_health = 100; }
-    void setHealth(double h) {i_health = h; }
-
-    int type() override { return 1; }
-
-    void addCamera(std::string name, Camera& camera);
-    void removeCamera(std::string name);
 };
 
 

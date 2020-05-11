@@ -8,35 +8,35 @@
 #include "settings.h"
 #include <thread>
 
-ClientUDP::ClientUDP(World& world) : world(world), lastBroadcast(-INFINITY), working(false)
+ClientUDP::ClientUDP(World& world) : _world(world), _lastBroadcast(-INFINITY), _working(false), _localPlayer(nullptr)
 {
-    socket.setTimeoutCallback(std::bind(&ClientUDP::timeout, this, std::placeholders::_1));
+    _socket.setTimeoutCallback(std::bind(&ClientUDP::timeout, this, std::placeholders::_1));
 }
 
 bool ClientUDP::connected() const
 {
-    return socket.ownId();
+    return _socket.ownId();
 }
 
 bool ClientUDP::isWorking() const
 {
-    return working;
+    return _working;
 }
 
-Camera& ClientUDP::camera()
+Camera* ClientUDP::localPlayer()
 {
-    return players.at(socket.ownId());
+    return _localPlayer;
 }
 
 void ClientUDP::shoot(const std::string& name, double damage, double distance)
 {
     sf::Packet packet;
-    for (auto&& player : players)
+    for (auto&& player : _players)
     {
-        if (player.second.getName() == name)
+        if (player.second->getName() == name)
         {
             packet << MsgType::Shoot << player.first << damage << distance;
-            socket.sendRely(packet, socket.serverId());
+            _socket.sendRely(packet, _socket.serverId());
             break;
         }
     }
@@ -45,52 +45,53 @@ void ClientUDP::shoot(const std::string& name, double damage, double distance)
 void ClientUDP::connect(sf::IpAddress ip, sf::Uint16 port)
 {
     sf::Packet packet;
-    packet << MsgType::Connect;
-    socket.bind(0);
-    working = true;
-    socket.addConnection(socket.serverId(), ip, port);
-    socket.sendRely(packet, socket.serverId());
+    packet << MsgType::Connect << NETWORK_VERSION;
+    _socket.bind(0);
+    _working = true;
+    _socket.addConnection(_socket.serverId(), ip, port);
+    _socket.sendRely(packet, _socket.serverId());
 }
 
 void ClientUDP::update()
 {
-    if (!working)
-        return;
+    while (_working && process());
 
-    while (process());
+    if (!_working)
+        return;
 
     // World state broadcast
 
-    if (Time::time() - lastBroadcast > 1 / WORLD_UPDATE_RATE && connected())
+    if (Time::time() - _lastBroadcast > 1 / WORLD_UPDATE_RATE && connected())
     {
         sf::Packet updatePacket;
-        updatePacket << MsgType::PlayerUpdate << players.at(socket.ownId()).x() << players.at(socket.ownId()).y();
-        socket.send(updatePacket, socket.serverId());
-        lastBroadcast = Time::time();
+        updatePacket << MsgType::PlayerUpdate << _localPlayer->x() << _localPlayer->y() << _localPlayer->vPos();
+        _socket.send(updatePacket, _socket.serverId());
+        _lastBroadcast = Time::time();
     }
 
     // Socket update
 
-    socket.update();
+    _socket.update();
 }
 
 void ClientUDP::disconnect()
 {
-    for (auto it = players.begin(); it != players.end();)
+    for (auto it = _players.begin(); it != _players.end();)
     {
-        world.removeObject2D(it->second.getName());
-        players.erase(it++);
+        _world.removeObject2D(it->second->getName());
+        _players.erase(it++);
     }
+    _localPlayer = nullptr;
     sf::Packet packet;
-    packet << MsgType::Disconnect << socket.ownId();
-    socket.send(packet, socket.serverId());
-    socket.unbind();
-    working = false;
+    packet << MsgType::Disconnect << _socket.ownId();
+    _socket.send(packet, _socket.serverId());
+    _socket.unbind();
+    _working = false;
 }
 
 bool ClientUDP::timeout(sf::Uint16 id)
 {
-    if (id != socket.serverId())
+    if (id != _socket.serverId())
         return true;
     disconnect();
     return false;
@@ -105,7 +106,7 @@ bool ClientUDP::process()
     sf::Uint16 senderId;
     MsgType type;
 
-    if ((type = socket.receive(packet, senderId)) == MsgType::None)
+    if ((type = _socket.receive(packet, senderId)) == MsgType::None)
         return false;
     if (!connected() && type != MsgType::WorldInit)
         return true;
@@ -114,58 +115,75 @@ bool ClientUDP::process()
     sf::Packet extraPacket;
     sf::Uint16 targetId;
     bool revive;
-    double buf[3];
+    double buf[4];
+    Player* player;
 
     switch (type)
     {
 
     case MsgType::Connect:
         packet >> targetId;
-        players.insert({ targetId, Camera(world, {2.5, 0}) });
-        world.addObject2D(players.at(targetId), "Player" + std::to_string(targetId));
-        players.at(socket.ownId()).addCamera(players.at(targetId).getName(), players.at(targetId));
+        player = new Player({ 2.5, 0 });
+        _players.insert({ targetId, std::shared_ptr<Player>(player) });
+        _world.addObject2D(*_players.at(targetId), "Player" + std::to_string(targetId));
+        _localPlayer->addPlayer(_players.at(targetId)->getName(), _players.at(targetId));
         break;
 
     case MsgType::Disconnect:
         packet >> targetId;
-        if (targetId != socket.ownId() && players.count(targetId))
+        if (targetId != _socket.ownId() && _players.count(targetId))
         {
-            world.removeObject2D(players.at(targetId).getName());
-            players.at(socket.ownId()).removeCamera(players.at(targetId).getName());
-            players.erase(targetId);
+            _world.removeObject2D(_players.at(targetId)->getName());
+            _localPlayer->removePlayer(_players.at(targetId)->getName());
+            _players.erase(targetId);
+        }
+        else if (targetId == _socket.ownId())
+        {
+            disconnect();
         }
         break;
 
     case MsgType::WorldInit:
         packet >> targetId;
-        socket.setId(targetId);
-        while (packet >> targetId >> buf[0] >> buf[1] >> buf[2])
+        _socket.setId(targetId);
+        while (packet >> targetId >> buf[0] >> buf[1] >> buf[2] >> buf[3])
         {
-            players.insert({ targetId, Camera(world, {2.5, 0}) });
-            Camera& camera = players.at(targetId);
-            world.addObject2D(camera, "Player" + std::to_string(targetId));
-            camera.setPosition({ buf[0], buf[1] });
-            camera.setHealth(buf[2]);
-        }
-        for (auto&& player : players)
-        {
-            if (player.first != socket.ownId())
+            if (targetId == _socket.ownId())
             {
-                players.at(socket.ownId()).addCamera(player.second.getName(), player.second);
+                _localPlayer = new Camera(_world, { 2.5, 0 });
+                player = _localPlayer;
+            }
+            else
+            {
+                player = new Player({ 2.5, 0 });
+            }
+            _players.insert({ targetId, std::shared_ptr<Player>(player) });
+            _world.addObject2D(*player, "Player" + std::to_string(targetId));
+            player->setPosition({ buf[0], buf[1] });
+            player->setVPos(buf[2]);
+            player->setHealth(buf[3]);
+        }
+        for (auto&& player : _players)
+        {
+            if (player.first != _socket.ownId())
+            {
+                _localPlayer->addPlayer(player.second->getName(), player.second);
             }
         }
         break;
 
     case MsgType::WorldUpdate:
-        while (packet >> targetId >> buf[0] >> buf[1] >> buf[2])
+        while (packet >> targetId >> buf[0] >> buf[1] >> buf[2] >> buf[3])
         {
-            if (players.count(targetId))
+            if (_players.count(targetId))
             {
-                Camera& camera = players.at(targetId);
-                world.addObject2D(camera, "Player" + std::to_string(targetId));
-                if (targetId != socket.ownId())
-                    camera.setPosition({ buf[0], buf[1] });
-                camera.setHealth(buf[2]);
+                player = _players.at(targetId).get();
+                if (targetId != _socket.ownId())
+                {
+                    player->setPosition({ buf[0], buf[1] });
+                    player->setVPos(buf[2]);
+                }
+                player->setHealth(buf[3]);
             }
         }
         break;
@@ -173,9 +191,9 @@ bool ClientUDP::process()
     case MsgType::Shoot:
         packet >> revive >> buf[0] >> buf[1];
         if (revive)
-            players.at(socket.ownId()).setPosition({ buf[0], buf[1] });
+            _localPlayer->setPosition({ buf[0], buf[1] });
         else
-            players.at(socket.ownId()).shiftPrecise({ buf[0], buf[1] });
+            _localPlayer->shiftPrecise({ buf[0], buf[1] });
         break;
     }
     return true;

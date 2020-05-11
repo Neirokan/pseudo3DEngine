@@ -1,14 +1,8 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
-
-#include <map>
 #include <fstream>
-#include <chrono>
-#include <thread>
 #include "settings.h"
 #include "Poligon2D.h"
-#include "Circle2D.h"
-#include "Object2D.h"
 #include "World.h"
 #include "Camera.h"
 #include "Menu.h"
@@ -98,7 +92,7 @@ int main()
         world.addObject2D(columns[i], "col" + std::to_string(i + 1));
     }
     
-    //walls[9].makeMirror();
+    //walls[9].setMirror();
 
     Poligon2D object1({ {1, 1}, {2.05, 1}, {2, 2} }, { 2.7, 5 }, 1, INSTRUCTION_TEXTURE);
     Poligon2D object2({ {0, 0}, {1, 0}, {1, 1}, {0, 1} }, { -1.9, 6.7 }, 1, FROZEN_TEXTURE);
@@ -112,8 +106,8 @@ int main()
     Poligon2D object9({ {0, 0}, {.3, 0}, {.3, .3}, {0, .3} }, { 1.5, 4.2 }, 0.9);
     Poligon2D object10({ {0, 0}, {.1, 0}, {.1, .1}, {0, .1} }, { 2.5, 5.2 }, 0.9);
 
-    //object2.makeMirror();
-    object3.makeMirror();
+    //object2.setMirror();
+    object3.setMirror();
 
     world.addObject2D(object1, "object1");
     world.addObject2D(object2, "object2");
@@ -214,14 +208,11 @@ int main()
                 // If connect success - init camera and start game
                 else
                 {
-                    camera = &client.camera();
+                    camera = client.localPlayer();
                     camera->client = &client;
-                    if (menu.isTextures() != camera->isTextures())
-                        camera->switchTextures();
-                    if (menu.isSmooth() != camera->isSmooth())
-                        camera->switchSmooth();
-                    if (menu.isCollision() != camera->isCollision())
-                        camera->switchCollision();
+                    camera->setTextures(menu.isTextures());
+                    camera->setSmooth(menu.isSmooth());
+                    camera->setCollision(menu.isCollision());
                     backSounds.play();
                     music.pause();
                 }
