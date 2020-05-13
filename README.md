@@ -1,12 +1,13 @@
 # pseudo3DEngine
 Simple pseudo-3d engine implementation. This library allows you to make two dimensional map and draw pseudo 3D image using Ray-Cast.
 
-This is a Vectozav'r pseudo3DEngine fork, but with too many code changes and a bunch of fixes and improvements, such as:
+This is a Vectozavr's pseudo3DEngine fork, but with too many code changes and a bunch of fixes and improvements, such as:
 - The network system is replaced by another, WORKING system
 - Fisheye correction
 - Jumps
 - Realistic wall height (seriously, the zero-height wall was like half a player)
 - Realistic circle collision (not just 10 walls)
+- Reflections remain inside the mirrors
 - Menu fix (buttons now detect only mouse clicks, not holding)
 - The application stops reading input and moving the cursor while you are switched to another window
 - FPS limit (no more 600 fps in menu)
