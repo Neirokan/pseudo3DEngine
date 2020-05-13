@@ -377,7 +377,7 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
     }
     if (vPos() == 0 && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
     {
-        d_vSpeed = d_jumpSpeed * health() / 100;
+        d_vSpeed = d_jumpSpeed * (health() / 1000 * 7 + 0.3); // health modificator from 0.3 to 1 => 0.3 + (health / 100) * 0.7
     }
 
     // Fire
@@ -431,83 +431,89 @@ pair<double, double> Camera::heightInPixels(double distance, double height, doub
 // Draw 1 pixel column of screen
 void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure& obj, int shift, int f)
 {
-    sf::ConvexShape polygon;
-    polygon.setPointCount(4);
-
     int horIndex = shift / (SCREEN_WIDTH / DISTANCES_SEGMENTS);
-    double vertical = 0;
-    if (obj.object->type() == ObjectType::Player)
-        vertical = dynamic_cast<Player*>(obj.object)->vPos();
-    pair<double, double> height_now = heightInPixels(obj.distance * horizontalCos[horIndex], obj.height, vertical);
-
-    int h1 = (int)std::max(mirrorTop, std::min(mirrorBot, height_now.first));
-    int h2 = (int)std::min(mirrorBot, std::max(mirrorTop, height_now.second));
-
-    polygon.setPoint(0, sf::Vector2f(0, (float)h1));
-    polygon.setPoint(1, sf::Vector2f(0, (float)h2));
-    polygon.setPoint(2, sf::Vector2f((float)SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h2));
-    polygon.setPoint(3, sf::Vector2f((float)SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1));
-
-    int alpha = (int)(255 * (1 - obj.distance / d_depth));
-    if (alpha > 255)
-        alpha = 255;
-    if (alpha < 0)
-        alpha = 0;
-
-    alpha = 255 - alpha;
-
-    if (!b_textures)
-        polygon.setFillColor({ 255, 174, 174, static_cast<sf::Uint8>(alpha) });
+    int h2;
+    if (obj.object == nullptr)
+        h2 = SCREEN_HEIGHT / 2;
     else
-        polygon.setFillColor({ 255, 255, 255, static_cast<sf::Uint8>(alpha) });
-
-    //polygon.setOutlineThickness(0); // we can make non zero thickness for debug
-    polygon.setPosition((float)(shift * SCREEN_WIDTH / DISTANCES_SEGMENTS), 0);
-
-    sf::Sprite sprite;
-    if (obj.object && b_textures)
     {
-        sprite.setPosition(sf::Vector2f((float)shift * SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1)); // absolute position
-        int left;
-        int top, finalTop;
-        int bot, finalBot;
-        if (obj.object->isMirror()) // In case of mirror
+        sf::ConvexShape polygon;
+        polygon.setPointCount(4);
+
+        double vertical = 0;
+        if (obj.object->type() == ObjectType::Player)
+            vertical = dynamic_cast<Player*>(obj.object)->vPos();
+        pair<double, double> height_now = heightInPixels(obj.distance * horizontalCos[horIndex], obj.height, vertical);
+
+        int h1 = (int)std::max(mirrorTop, std::min(mirrorBot, height_now.first));
+        h2 = (int)std::min(mirrorBot, std::max(mirrorTop, height_now.second));
+
+        polygon.setPoint(0, sf::Vector2f(0, (float)h1));
+        polygon.setPoint(1, sf::Vector2f(0, (float)h2));
+        polygon.setPoint(2, sf::Vector2f((float)SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h2));
+        polygon.setPoint(3, sf::Vector2f((float)SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1));
+
+        int alpha = (int)(255 * (1 - obj.distance / d_depth));
+        if (alpha > 255)
+            alpha = 255;
+        if (alpha < 0)
+            alpha = 0;
+
+        alpha = 255 - alpha;
+
+        if (!b_textures)
+            polygon.setFillColor({ 255, 174, 174, static_cast<sf::Uint8>(alpha) });
+        else
+            polygon.setFillColor({ 255, 255, 255, static_cast<sf::Uint8>(alpha) });
+
+        //polygon.setOutlineThickness(0); // we can make non zero thickness for debug
+        polygon.setPosition((float)(shift * SCREEN_WIDTH / DISTANCES_SEGMENTS), 0);
+
+        sf::Sprite sprite;
+        if (obj.object && b_textures)
         {
-            sprite.setTexture(W_world.skyTexture());
-            left = (int)(d_direction / 10 * SCREEN_WIDTH);
-            top = height_now.first / SCREEN_HEIGHT * sprite.getTextureRect().height;
-            bot = height_now.second / SCREEN_HEIGHT * sprite.getTextureRect().height;
-            double scaleFactor = (double)SCREEN_HEIGHT / sprite.getTextureRect().height;
-            sprite.scale(1, (float)scaleFactor);
+            sprite.setPosition(sf::Vector2f((float)shift * SCREEN_WIDTH / DISTANCES_SEGMENTS, (float)h1)); // absolute position
+            int left;
+            int top, finalTop;
+            int bot, finalBot;
+            if (obj.object->isMirror()) // In case of mirror
+            {
+                sprite.setTexture(W_world.skyTexture());
+                left = (int)(d_direction / 10 * SCREEN_WIDTH);
+                top = height_now.first / SCREEN_HEIGHT * sprite.getTextureRect().height;
+                bot = height_now.second / SCREEN_HEIGHT * sprite.getTextureRect().height;
+                double scaleFactor = (double)SCREEN_HEIGHT / sprite.getTextureRect().height;
+                sprite.scale(1, (float)scaleFactor);
+            }
+            else
+            {
+                sprite.setTexture(obj.object->loadTexture());
+                left = obj.progress * SCREEN_WIDTH;
+                top = 0;
+                bot = SCREEN_HEIGHT;
+                sprite.scale(1, (float)(height_now.second - height_now.first) / SCREEN_HEIGHT);
+            }
+
+            if ((int)height_now.first != h1)
+                finalTop = top + (bot - top) * (h1 - height_now.first) / (height_now.second - height_now.first);
+            else
+                finalTop = top;
+
+            if ((int)height_now.second != h2)
+                finalBot = top + (bot - top) * (h2 - height_now.first) / (height_now.second - height_now.first);
+            else
+                finalBot = bot;
+
+            sprite.setTextureRect(sf::IntRect(left, finalTop, SCREEN_WIDTH / DISTANCES_SEGMENTS, finalBot - finalTop));
+            window.draw(sprite);
         }
-        else
-        {
-            sprite.setTexture(obj.object->loadTexture());
-            left = obj.progress * SCREEN_WIDTH;
-            top = 0;
-            bot = SCREEN_HEIGHT;
-            sprite.scale(1, (float)(height_now.second - height_now.first) / SCREEN_HEIGHT);
-        }
 
-        if ((int)height_now.first != h1)
-            finalTop = top + (bot - top) * (h1 - height_now.first) / (height_now.second - height_now.first);
-        else
-            finalTop = top;
+        if (abs(obj.distance - d_depth) > 0.001)
+            window.draw(polygon);
 
-        if ((int)height_now.second != h2)
-            finalBot = top + (bot - top) * (h2 - height_now.first) / (height_now.second - height_now.first);
-        else
-            finalBot = bot;
-
-        sprite.setTextureRect(sf::IntRect(left, finalTop, SCREEN_WIDTH / DISTANCES_SEGMENTS, finalBot - finalTop));
-        window.draw(sprite);
+        mirrorTop = h1;
+        mirrorBot = h2;
     }
-
-    if (abs(obj.distance - d_depth) > 0.001)
-        window.draw(polygon);
-
-    mirrorTop = h1;
-    mirrorBot = h2;
 
     // Floor drawing
 
