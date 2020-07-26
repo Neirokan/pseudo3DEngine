@@ -5,6 +5,9 @@
 #include "Point2D.h"
 #include <cmath>
 
+Point2D::Point2D() : x(0), y(0) {}
+Point2D::Point2D(double x, double y) : x(x), y(y) {}
+
 Point2D Point2D::operator+(const Point2D& point2D) const
 {
     return Point2D{ this->x + point2D.x, this->y + point2D.y };

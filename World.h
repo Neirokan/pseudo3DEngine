@@ -31,7 +31,7 @@ private:
 
     sf::Font F_font;
 
-    std::vector<std::string> v_bonuses;
+    std::vector<std::weak_ptr<Bonus>> v_bonuses;
     bool init_bonuses();
 
 public:

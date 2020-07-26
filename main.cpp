@@ -122,8 +122,9 @@ int main()
         if (!menu.isPaused())
         {
             window.setMouseCursorVisible(false);
-            camera->updateDistances(world);
+            camera->startFrameProcessing();
             camera->drawCameraView(window);
+            camera->endFrameProcessing();
             world.rotateAllBonuses(d_elapsedTime);
             // world.draw(window); // top-down debug map. To fix exception - look into "Camera::updateDistances"
 

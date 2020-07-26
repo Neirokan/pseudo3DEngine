@@ -213,15 +213,15 @@ bool World::load3DObj(const std::string filename, const std::string texture, dou
 
 bool World::init_bonuses() {
 
-    vector<Bonus> bonuses;
-    bonuses.push_back(Bonus({0, 0}, BonusType::TreatmentBonus, HEALTH_BONUS_TEXTURE));
-    bonuses.push_back(Bonus({0, 1}, BonusType::AmmunitionBonus, AMMUNATION_BONUS_TEXTURE));
-    bonuses.push_back(Bonus({0, 2}, BonusType::SpeedBonus, SPEED_BONUS_TEXTURE));
-    bonuses.push_back(Bonus({0, 3}, BonusType::ViewBonus, VIEW_BONUS_TEXTURE));
+    vector<shared_ptr<Bonus>> bonuses;
+    bonuses.push_back(make_shared<Bonus>(Point2D(0, 0), BonusType::TreatmentBonus, HEALTH_BONUS_TEXTURE));
+    bonuses.push_back(make_shared<Bonus>(Point2D(0, 1), BonusType::AmmunitionBonus, AMMUNATION_BONUS_TEXTURE));
+    bonuses.push_back(make_shared<Bonus>(Point2D(0, 2), BonusType::SpeedBonus, SPEED_BONUS_TEXTURE));
+    bonuses.push_back(make_shared<Bonus>(Point2D(0, 3), BonusType::ViewBonus, VIEW_BONUS_TEXTURE));
 
     for(int b = 0; b < bonuses.size(); b++)
-        if(addObject2D(std::make_shared<Bonus>(bonuses[b]), "bonus_" + std::to_string(b)))
-            v_bonuses.push_back("bonus_" + std::to_string(b));
+        if(addObject2D(bonuses[b], "bonus_" + std::to_string(b)))
+            v_bonuses.push_back(bonuses[b]);
         else
             return false;
 
@@ -254,6 +254,11 @@ void World::freeBonusPoint(Point2D p) {
 }
 
 void World::rotateAllBonuses(double angle) {
-    for(auto& bonus : v_bonuses)
-        map_objects[bonus]->rotate(angle);
+    for (auto it = v_bonuses.begin(); it != v_bonuses.end();)
+    {
+        if (auto bonus = it->lock())
+            bonus->rotate(angle), it++;
+        else
+            it = v_bonuses.erase(it);
+    }
 }

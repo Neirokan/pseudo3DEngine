@@ -9,7 +9,7 @@
 
 class Player : public Circle2D
 {
-private:
+protected:
     double d_health; // player health
     double d_vPos;   // player vertical (height) position
 
