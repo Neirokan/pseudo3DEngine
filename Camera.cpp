@@ -11,10 +11,10 @@
 
 using namespace std;
 
-Camera::Camera(World& world, Point2D position, double vPos, double height, double direction, double health, std::string texture, double fieldOfView, double eyesHeight, double depth, double walkSpeed, double jumpSpeed, double viewSpeed)
-    : W_world(world), Player(position, vPos, height, health, texture), d_direction(direction), d_eyesHeight(eyesHeight), d_depth(depth), d_walkSpeed(walkSpeed), d_jumpSpeed(jumpSpeed), d_viewSpeed(viewSpeed)
+Camera::Camera(World& world, Point2D position, double vPos, double height, double health, std::string texture, double fieldOfView, double eyesHeight, double depth, double walkSpeed, double jumpSpeed, double viewSpeed)
+    : W_world(world), Player(position, vPos, height, health, texture), d_eyesHeight(eyesHeight), d_depth(depth), d_walkSpeed(walkSpeed), d_jumpSpeed(jumpSpeed), d_viewSpeed(viewSpeed)
 {
-    Weapon weapon1(30);
+    Weapon weapon1(300);
     weapon1.choiceWeapon("shotgun");
     v_weapons.push_back(weapon1);
 
@@ -37,6 +37,7 @@ Camera::Camera(World& world, Point2D position, double vPos, double height, doubl
         threads[i] = make_shared<thread>(&Camera::updateThread, this, i, threadCount);
     startM.unlock();
     startCV.notify_all();
+    d_aspectRatio = 1.0;
 }
 
 Camera::~Camera()
@@ -363,7 +364,7 @@ void Camera::updateThread(int i, int n)
 }
 
 // Check all directions for collisions and walls
-void Camera::updateDistances(const World& world)
+void Camera::updateDistances()
 {
     throw std::logic_error("updateDistances(const World&) method currenly replaced by synchronized multithreading.");
 }
@@ -404,7 +405,7 @@ void Camera::endFrameProcessing()
     for (auto b : oldFrame.bonuses)
     {
         W_world.freeBonusPoint(b->position());                 // free this place for another bonus
-        b->setPosition(W_world.getBonusPoint(b->position()));  // change the position of this bonus and mark this
+        b->setPosition(W_world.getBonusPoint());  // change the position of this bonus and mark this
                                                                // position as busy.
     }
     oldFrame.enemies.resize(m_playersOnTheScreen.size());
@@ -554,9 +555,29 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
         dx -= d_cos;
         dy -= d_sin;
     }
-    if (vPos() == 0 && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+
+    if(sf::Keyboard::isKeyPressed(sf::Keyboard::G)) {
+        b_godMode = !b_godMode;
+        if(b_godMode) {
+            d_walkSpeed = 10;
+            v_weapons[i_selectedWeapon].set(30000);
+        } else {
+            d_walkSpeed = 3;
+        }
+    }
+
+    if(sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && b_godMode) {
+        setVPos(vPos() - 0.1);
+    }
+
+    if (vPos() == 0 && sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && !b_godMode)
     {
         d_vSpeed = d_jumpSpeed * (health() / 1000 * 7 + 0.3); // health modificator from 0.3 to 1 => 0.3 + (health / 100) * 0.7
+    }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && b_godMode)
+    {
+        setVPos(vPos() + 0.1);
     }
 
     // Fire
@@ -583,14 +604,17 @@ bool Camera::keyboardControl(double elapsedTime, sf::RenderWindow& window)
         if (walkSound.getStatus() != sf::Sound::Status::Playing)
             walkSound.play();
     }
-    else
-    {
+    else {
         walkSound.pause();
     }
 
     // Move player
     shiftPrecise({ dx * d_walkSpeed * elapsedTime * (health() / 100), dy * d_walkSpeed * elapsedTime * (health() / 100) }, d_vSpeed * elapsedTime);
-    d_vSpeed -= 9.8 * elapsedTime;
+
+    if(!b_godMode)
+        d_vSpeed -= 9.8 * elapsedTime;
+    else
+        setHealth(100);
 
     // Remember that we had focus and weren't in menu
     b_hadFocus = true;
@@ -667,7 +691,7 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
             else
             {
                 sprite.setTexture(obj.object->loadTexture());
-                left = 0.2 * obj.progress * SCREEN_WIDTH;
+                left = obj.object->aspect() * obj.progress * SCREEN_WIDTH;
                 top = 0;
                 bot = obj.object->loadTexture().getSize().y;
                 sprite.scale(1, (float)(height_now.second - height_now.first) / obj.object->loadTexture().getSize().y);
@@ -702,6 +726,9 @@ void Camera::drawVerticalStrip(sf::RenderTarget& window, const RayCastStructure&
     }
 
     // Floor drawing
+
+    if(b_godMode)
+        return;
 
     int x = shift * SCREEN_WIDTH / DISTANCES_SEGMENTS;
 
@@ -869,17 +896,29 @@ void Camera::drawCameraView(sf::RenderTarget& window)
     //m_playersOnTheScreen
     for (const auto& player : oldFrame.enemies)
     {
+        bool canSee = true;
         Point2D enemyDirection = (player.position - oldFrame.position).normalize();
+
+        pair<Point2D, Point2D> segment1 = { {x(), y()}, {x() + d_depth*enemyDirection.x, y() + d_depth*enemyDirection.y} };
+        std::vector<RayCastStructure> v_rayCastStructure;
+        objectsRayCrossed(segment1, v_rayCastStructure, this);
+        //if(!v_rayCastStructure.empty() && v_rayCastStructure.back().object->getName() == player.first)
+        //    canSee = true;
+
+
         enemyDirection = { enemyDirection.x * cos(-oldFrame.direction) - enemyDirection.y * sin(-oldFrame.direction), enemyDirection.x * sin(-oldFrame.direction) + enemyDirection.y * cos(-oldFrame.direction) };
         double offset = enemyDirection.y / enemyDirection.x;
-        if (abs(offset) < halfWidth && enemyDirection.x > 0)
+        if (abs(offset) < halfWidth && enemyDirection.x > 0 && canSee)
         {
             int xPos = (int)((enemyDirection.y / enemyDirection.x / halfWidth + 1.0) / 2.0 * (DISTANCES_SEGMENTS - 1.0));
-            int yPos = (int)(heightInPixels((player.position - oldFrame.position).abs(), player.height + 0.2, player.vPos).first);
+            int yPos = -30 + (int)(heightInPixels((player.position - oldFrame.position).abs(), player.height + 0.2, player.vPos).first);
             auto healthProgress = player.health;
             drawHealth(window, xPos - 50, yPos, 100, (int)healthProgress);
         }
     }
+    if(b_godMode)
+        return;
+
     drawHealth(window, 80, SCREEN_HEIGHT - 50, 400, (int)health());
     v_weapons[i_selectedWeapon].draw(window);
 
@@ -891,9 +930,11 @@ void Camera::drawCameraView(sf::RenderTarget& window)
 
     sf::Text Text_health;
     sf::Text Text_shoots;
+    sf::Text Text_kills_deaths;
 
     Text_health.setFont(W_world.font());
     Text_shoots.setFont(W_world.font());
+    Text_kills_deaths.setFont(W_world.font());
 
     Text_health.setCharacterSize(20);
     Text_health.setFillColor(sf::Color::White);
@@ -905,11 +946,19 @@ void Camera::drawCameraView(sf::RenderTarget& window)
     Text_shoots.setStyle(sf::Text::Bold);
     Text_shoots.setPosition(SCREEN_WIDTH - 130, SCREEN_HEIGHT - 102);
 
+    Text_kills_deaths.setCharacterSize(40);
+    Text_kills_deaths.setFillColor(sf::Color::White);
+    Text_kills_deaths.setStyle(sf::Text::Bold);
+    Text_kills_deaths.setPosition(20, 0);
+
     Text_health.setString(to_string((int)health()));
     Text_shoots.setString(to_string((int)v_weapons[i_selectedWeapon].balance()));
 
+    Text_kills_deaths.setString("kills: " + to_string(kills()) + " | deaths: " + to_string(deaths()));
+
     window.draw(Text_health);
     window.draw(Text_shoots);
+    window.draw(Text_kills_deaths);
 }
 
 double Camera::scalarWithNormal(Point2D edge, Point2D vector)
@@ -926,7 +975,8 @@ void Camera::shiftPrecise(Point2D vector, double vertical)
     if (vPos() < 0)
     {
         d_vSpeed = 0;
-        setVPos(0);
+        if(!b_godMode)
+            setVPos(0);
     }
     if (!b_collision)
     {
